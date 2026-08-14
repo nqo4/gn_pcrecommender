@@ -194,20 +194,29 @@ _RAM_SPEED_RE = re.compile(r"DDR[45]-(\d+)")
 MIN_DDR5_SPEED_MHZ = 5600  # 실사용자 제공 RAM 가이드 3절: "DDR5-4800은 초기형 속도로 성능이 떨어지므로 5600MHz 권장"
 
 
-def _fetch_ram_options(conn, ram_gb_min: int) -> list[dict]:
+def _fetch_ram_options(conn, ram_gb_min: int, mode: str = "perf") -> list[dict]:
     """RAM을 상품(product_id) 단위가 아니라 "옵션"(용량 구성) 단위로 조회한다.
     *** 수정(실사용자 제공 RAM 매칭 가이드 + 매칭 순서 변경) ***
     이제 메인보드보다 먼저 RAM을 고른다 — 메인보드 규격에 RAM이 끌려가면서
     DDR4 전용 보급형 보드가 먼저 골라졌을 때 RAM이 억지로 DDR4로 폴백되는
-    문제를 막기 위해서다. 여기서는 메인보드 정보 없이:
-      1) DDR5-5600MHz 이상만 우선 조회한다(가이드 3절 — 4800은 구형 취급).
-      2) 그걸로 요구 용량을 못 채우면 DDR5 전체(4800 포함)로 넓힌다.
-      3) 그래도 없으면 DDR4로 폴백한다(가이드 1절 — "구형, 비추천"이지만
-         카탈로그에 DDR5가 전혀 없는 경우의 최후 수단).
+    문제를 막기 위해서다. 여기서는 메인보드 정보 없이 용량/규격만 본다.
     항상 듀얼 채널(단일 스틱 2개, quantity=2)로 고정한다(가이드 2절 — 단일/
     4개 금지, 정확히 2개가 정석). 슬롯 수 검증은 이 시점엔 메인보드가 아직
     안 정해졌으니 할 수 없고, 뒤이어 오는 메인보드 스테이지가 "이 RAM의
-    quantity를 수용할 슬롯이 있는지"를 확인한다."""
+    quantity를 수용할 슬롯이 있는지"를 확인한다.
+
+    *** 수정(실사용자 발견: "가성비 모드가 문서작업급 요구에도 DDR5-5600
+    조합(37만원)을 강제해서, 카탈로그에 있는 DDR4 조합(14만원)보다 23만원
+    비싸게 나온다") ***
+    mode="perf"(기본값, 성능 모드가 씀)는 예전 그대로 DDR5-5600MHz 이상을
+    최우선으로 강제한다(가이드 3절 — 4800은 구형 취급, DDR5 자체가 카탈로그에
+    없을 때만 DDR4로 최후 폴백). 이건 "좋은 사양"이 목적인 성능 모드엔 맞는
+    정책이다.
+    mode="cost"(가성비 모드)는 이 우선순위 강제를 걷어내고 DDR4/DDR5를
+    가리지 않고 요구 용량을 만족하는 옵션을 전부 후보로 낸다 — 가이드가
+    권고하는 "DDR5 우선"은 성능 관점 권고이지 "예산이 최우선인 가성비
+    모드에도 조건 없이 관철돼야 한다"는 뜻은 아니었다. 어느 게 실제로 싼지는
+    get_candidates 끝의 가격 정렬(mode="cost")이 그대로 판단하게 둔다."""
     quantity = 2  # 가이드 2절: 무조건 듀얼 채널(동일 용량 2개)이 정석
 
     def _query(ram_type: str) -> list[dict]:
@@ -265,6 +274,13 @@ def _fetch_ram_options(conn, ram_gb_min: int) -> list[dict]:
             })
         return options
 
+    if mode == "cost":
+        # 우선순위 강제 없이 DDR4/DDR5 전부를 후보로 낸다 — 가격 정렬이 알아서 고른다.
+        options = _to_options(_query("DDR5"), "DDR5", 0) + _to_options(_query("DDR4"), "DDR4", 0)
+        if options:
+            return options
+        return []
+
     ddr5_fast = _to_options(_query("DDR5"), "DDR5", MIN_DDR5_SPEED_MHZ)
     if ddr5_fast:
         return ddr5_fast
@@ -318,9 +334,11 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         # *** 수정(실사용자 요청: 매칭 순서 변경 — RAM을 메인보드보다 먼저) ***
         # 메인보드가 RAM보다 먼저 정해지면, 가성비 모드에서 DDR4 전용 보급형
         # 보드가 먼저 골라졌을 때 RAM이 억지로 DDR4로 폴백되는 문제가 있었다.
-        # 이제 메인보드와 무관하게 요구 용량만 보고 RAM을 먼저 고른다(DDR5
-        # 우선, 5600MHz 미만은 배제 — _fetch_ram_options 안에서 처리).
-        rows = _fetch_ram_options(conn, req.ram_gb_min)
+        # 이제 메인보드와 무관하게 요구 용량만 보고 RAM을 먼저 고른다.
+        # DDR5 우선(가이드 3절, mode="perf")이냐 DDR4/DDR5 가격 경쟁(mode="cost")
+        # 이냐는 _fetch_ram_options 안에서 mode로 갈린다 — 자세한 이유는 그
+        # 함수의 docstring 참고.
+        rows = _fetch_ram_options(conn, req.ram_gb_min, mode)
     elif stage == "mboard":
         cpu = context["cpu"]
         ram = context["ram"]
