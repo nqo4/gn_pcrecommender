@@ -555,6 +555,22 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
                 r for r in rows
                 if r["cooler_type"] != "공랭" or (r["height_mm"] or 0) < 155
             ]
+
+        # *** 신설(실사용자 발견: "성능 모드 다운그레이드에서 케이스가 쿨러보다
+        # 먼저 정해지도록 순서를 바꿨더니, 케이스 선택 시점엔 쿨러가 아직
+        # 수랭이라 케이스 쪽 공랭 높이 체크(case 스테이지의 max_cooler_height_mm
+        # 검사)가 통째로 스킵된다 — 나중에 쿨러가 진짜로 공랭으로 바뀌어도
+        # 이미 정해진 케이스와 실제로 맞는지 아무도 확인 안 한다") ***
+        # case가 이미 정해져 있으면(다운그레이드 흐름), 공랭 후보를 그 케이스의
+        # max_cooler_height_mm으로 직접 걸러서 이 구멍을 메운다. 가성비 모드나
+        # case가 아직 없는 시점(cooler가 case보다 먼저인 STAGES 순서)에는
+        # context에 case가 없으므로 이 필터는 자동으로 건너뛴다.
+        case = context.get("case")
+        if case:
+            rows = [
+                r for r in rows
+                if r["cooler_type"] != "공랭" or (r["height_mm"] or 0) <= (case["max_cooler_height_mm"] or 0)
+            ]
     elif stage == "psu":
         # *** 수정(실사용자 최종 결정: PSU/쿨러 계산식을 하나로 통일) ***
         # 순간 피크(GPU recommended_psu_w, 이미 제조사 마진 포함된 값)
