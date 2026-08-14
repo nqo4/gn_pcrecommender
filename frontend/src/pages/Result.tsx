@@ -25,6 +25,11 @@ function extraSpecLine(category: string, part: Part): string | null {
       if (part.memory_support) items.push(`메모리 ${part.memory_support}`);
       break;
     case "gpu":
+      // length_mm/recommended_psu_w/power_connector도 add_compat_columns.sql 때부터
+      // 있던 기존 컬럼인데 표시 목록에서 빠져 있었다.
+      if (num(part.length_mm)) items.push(`길이 ${part.length_mm}mm`);
+      if (part.power_connector) items.push(`전원 커넥터 ${part.power_connector}`);
+      if (num(part.recommended_psu_w)) items.push(`권장 파워 ${part.recommended_psu_w}W`);
       if (part.output_ports) items.push(`출력단자 ${part.output_ports}`);
       if (num(part.power_draw_w)) items.push(`사용전력 ${part.power_draw_w}W`);
       break;
