@@ -156,13 +156,18 @@ INSERT INTO power_prices (product_id, crawl_date, option_name, price) VALUES
 (8010, @today, '기본', 320000);
 
 -- ---------------- 케이스 (darkFlash/앱코) ----------------
-INSERT INTO case_products (product_id, name, company, usage_type, support_form_factors, max_cooler_height_mm, max_vga_length_mm, support_psu_form_factors, support_radiator_mm) VALUES
-(9001, '앱코 NCORE ITX 미니 케이스', '앱코', 'consumer', 'ITX', 155, 250, 'SFX', NULL),
-(9002, 'darkFlash DLM21 메쉬 미니타워', 'darkFlash', 'consumer', 'M-ATX,ITX', 160, 320, 'ATX,SFX', NULL),
-(9003, '앱코 GALLERIA 500 강화유리', '앱코', 'consumer', 'ATX,M-ATX,ITX', 165, 350, 'ATX', '240'),
-(9004, 'darkFlash DLX21 미들타워', 'darkFlash', 'consumer', 'ATX,M-ATX,ITX', 170, 380, 'ATX', '240,280'),
-(9005, '앱코 ATOM 500M 강화유리', '앱코', 'consumer', 'ATX,M-ATX,ITX', 175, 400, 'ATX', '240,280,360'),
-(9006, 'darkFlash DS900 ARGB 강화유리', 'darkFlash', 'consumer', 'ATX,M-ATX,ITX,E-ATX', 180, 420, 'ATX', '240,280,360');
+-- [갱신] support_radiator_mm(단일 컬럼)을 실제 파이프라인 구조
+-- (radiator_top/side/rear/front_mm, add_missing_spec_columns.sql·
+-- fill_missing_specs.sql과 동일)로 맞췄다. 위치별 지원 규격은 실제 제품
+-- 스펙 패턴을 참고한 근사치(상단이 제일 흔하고 큰 라디에이터, 후면은
+-- 보통 120mm 단일, 작은 케이스는 지원 없음).
+INSERT INTO case_products (product_id, name, company, usage_type, support_form_factors, max_cooler_height_mm, max_vga_length_mm, support_psu_form_factors, radiator_top_mm, radiator_side_mm, radiator_rear_mm, radiator_front_mm) VALUES
+(9001, '앱코 NCORE ITX 미니 케이스', '앱코', 'consumer', 'ITX', 155, 250, 'SFX', NULL, NULL, NULL, NULL),
+(9002, 'darkFlash DLM21 메쉬 미니타워', 'darkFlash', 'consumer', 'M-ATX,ITX', 160, 320, 'ATX,SFX', NULL, NULL, '120', NULL),
+(9003, '앱코 GALLERIA 500 강화유리', '앱코', 'consumer', 'ATX,M-ATX,ITX', 165, 350, 'ATX', '240', NULL, '120', NULL),
+(9004, 'darkFlash DLX21 미들타워', 'darkFlash', 'consumer', 'ATX,M-ATX,ITX', 170, 380, 'ATX', '240,280', NULL, '120', NULL),
+(9005, '앱코 ATOM 500M 강화유리', '앱코', 'consumer', 'ATX,M-ATX,ITX', 175, 400, 'ATX', '240,280,360', NULL, '120', '240'),
+(9006, 'darkFlash DS900 ARGB 강화유리', 'darkFlash', 'consumer', 'ATX,M-ATX,ITX,E-ATX', 180, 420, 'ATX', '240,280,360', NULL, '120', '240,280');
 
 INSERT INTO case_prices (product_id, crawl_date, option_name, price) VALUES
 (9001, @today, '기본', 55000), (9002, @today, '기본', 45000), (9003, @today, '기본', 60000),
