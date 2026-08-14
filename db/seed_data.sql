@@ -3,22 +3,23 @@
 -- 저장소의 진짜 크롤링 결과가 아니라, 스키마 구조만 저장소 그대로 따르고
 -- 값은 이 프로젝트에서 만든 예시 데이터다. 가격은 저장소와 동일하게
 -- crawl_date가 있는 이력 테이블에 넣는다(전부 같은 날짜로 1건씩).
+-- 대상 DB는 db/db.py의 init_db가 DANAWA_DB_NAME으로 선택한다(schema.sql 참고).
 -- ============================================================
-USE DW_db;
-
 SET @today = NOW();
 
 -- ---------------- CPU (Intel, LGA1700) ----------------
-INSERT INTO cpu_products (product_id, name, company, usage_type, socket, has_igpu, power_min_w, power_max_w) VALUES
-(1001, '인텔 코어i3-14세대 14100', '인텔', 'consumer', 'LGA1700', 'Y', 60, 110),
-(1002, '인텔 코어i5-14세대 14400', '인텔', 'consumer', 'LGA1700', 'Y', 65, 148),
-(1003, '인텔 코어i5-14세대 14600K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 181),
-(1004, '인텔 코어i7-13세대 13700', '인텔', 'consumer', 'LGA1700', 'Y', 65, 219),
-(1005, '인텔 코어i7-14세대 14700', '인텔', 'consumer', 'LGA1700', 'Y', 65, 224),
-(1006, '인텔 코어i7-14세대 14700K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 253),
-(1007, '인텔 코어i9-13세대 13900', '인텔', 'consumer', 'LGA1700', 'Y', 65, 219),
-(1008, '인텔 코어i9-14세대 14900K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 253),
-(1009, '인텔 코어i9-14세대 14900KS', '인텔', 'consumer', 'LGA1700', 'Y', 150, 320);
+-- tier_rank는 New_crawler/performance_tier.sql의 cpu_performance_tier 등급표
+-- (기획서 6.2, 1~24)에서 모델명으로 찾아 그대로 적었다.
+INSERT INTO cpu_products (product_id, name, company, usage_type, socket, has_igpu, power_min_w, power_max_w, tier_rank) VALUES
+(1001, '인텔 코어i3-14세대 14100', '인텔', 'consumer', 'LGA1700', 'Y', 60, 110, 2),
+(1002, '인텔 코어i5-14세대 14400', '인텔', 'consumer', 'LGA1700', 'Y', 65, 148, 3),
+(1003, '인텔 코어i5-14세대 14600K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 181, 10),
+(1004, '인텔 코어i7-13세대 13700', '인텔', 'consumer', 'LGA1700', 'Y', 65, 219, 11),
+(1005, '인텔 코어i7-14세대 14700', '인텔', 'consumer', 'LGA1700', 'Y', 65, 224, 15),
+(1006, '인텔 코어i7-14세대 14700K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 253, 17),
+(1007, '인텔 코어i9-13세대 13900', '인텔', 'consumer', 'LGA1700', 'Y', 65, 219, 18),
+(1008, '인텔 코어i9-14세대 14900K', '인텔', 'consumer', 'LGA1700', 'Y', 125, 253, 23),
+(1009, '인텔 코어i9-14세대 14900KS', '인텔', 'consumer', 'LGA1700', 'Y', 150, 320, 24);
 
 INSERT INTO cpu_prices (product_id, crawl_date, option_name, price) VALUES
 (1001, @today, '기본', 150000), (1002, @today, '기본', 260000), (1003, @today, '기본', 400000),
@@ -26,20 +27,22 @@ INSERT INTO cpu_prices (product_id, crawl_date, option_name, price) VALUES
 (1007, @today, '기본', 650000), (1008, @today, '기본', 780000), (1009, @today, '기본', 950000);
 
 -- ---------------- GPU (NVIDIA) ----------------
-INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w) VALUES
-(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450),
-(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450),
-(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500),
-(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500),
-(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600),
-(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650),
-(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650),
-(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700),
-(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700),
-(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750),
-(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750),
-(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850),
-(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000);
+-- tier_rank는 New_crawler/performance_tier.sql의 gpu_performance_tier 등급표
+-- (기획서 6.1, 1~14)에서 모델명으로 찾아 그대로 적었다.
+INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w, tier_rank) VALUES
+(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450, 2),
+(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450, 3),
+(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500, 4),
+(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500, 5),
+(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600, 6),
+(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650, 7),
+(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650, 8),
+(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700, 9),
+(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700, 10),
+(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750, 11),
+(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750, 12),
+(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850, 13),
+(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000, 14);
 
 INSERT INTO vga_prices (product_id, crawl_date, option_name, price) VALUES
 (2001, @today, '기본', 380000), (2002, @today, '기본', 420000), (2003, @today, '기본', 500000),
@@ -70,46 +73,60 @@ INSERT INTO mboard_prices (product_id, crawl_date, option_name, price) VALUES
 (3010, @today, '기본', 700000), (3011, @today, '기본', 240000), (3012, @today, '기본', 280000);
 
 -- ---------------- RAM (삼성전자/TeamGroup) ----------------
+-- [갱신] core/algorithm.py의 RAM 매칭이 "상품 1개 + 용량 옵션 여러 개"라는
+-- 실제 다나와 데이터 형태를 전제하게 바뀌었다: 속도는 상품명의 "DDR5-6000"
+-- 표기에서, 용량은 option_name("16GB" = 단일 스틱)에서 파싱하고 항상 2개를
+-- 듀얼 채널로 구성한다. 예전 목업(option_name '기본', 이름에 킷 용량 표기)은
+-- 파싱이 안 돼 후보 0개가 되므로 실데이터와 같은 형태로 바꿨다.
+-- capacity_gb 컬럼은 옵션 단위 체계에선 상품 속성이 아니라 NULL로 둔다.
 INSERT INTO ram_products (product_id, name, company, usage_type, ram_type, capacity_gb, speed_mhz) VALUES
-(4001, '삼성전자 DDR4-3200 16GB', '삼성전자', 'consumer', 'DDR4', 16, 3200),
-(4002, 'TeamGroup DDR4-3200 16GB(8Gx2)', 'TeamGroup', 'consumer', 'DDR4', 16, 3200),
-(4003, '삼성전자 DDR4-3200 32GB(16Gx2)', '삼성전자', 'consumer', 'DDR4', 32, 3200),
-(4004, 'TeamGroup T-Force DDR5-6000 16GB', 'TeamGroup', 'consumer', 'DDR5', 16, 6000),
-(4005, '삼성전자 DDR5-5600 32GB(16Gx2)', '삼성전자', 'consumer', 'DDR5', 32, 5600),
-(4006, 'TeamGroup T-Force DDR5-6000 32GB(16Gx2)', 'TeamGroup', 'consumer', 'DDR5', 32, 6000),
-(4007, '삼성전자 DDR5-6000 64GB(32Gx2)', '삼성전자', 'consumer', 'DDR5', 64, 6000);
+(4001, '삼성전자 DDR4-3200', '삼성전자', 'consumer', 'DDR4', NULL, 3200),
+(4002, 'TeamGroup T-Force Vulcan DDR4-3600', 'TeamGroup', 'consumer', 'DDR4', NULL, 3600),
+(4003, '삼성전자 DDR5-5600', '삼성전자', 'consumer', 'DDR5', NULL, 5600),
+(4004, 'TeamGroup T-Force DDR5-6000 CL30', 'TeamGroup', 'consumer', 'DDR5', NULL, 6000),
+(4005, 'SK하이닉스 DDR5-6400', 'SK하이닉스', 'consumer', 'DDR5', NULL, 6400);
 
 INSERT INTO ram_prices (product_id, crawl_date, option_name, price) VALUES
-(4001, @today, '기본', 55000), (4002, @today, '기본', 58000), (4003, @today, '기본', 105000),
-(4004, @today, '기본', 70000), (4005, @today, '기본', 145000), (4006, @today, '기본', 155000),
-(4007, @today, '기본', 320000);
+(4001, @today, '8GB', 25000),  (4001, @today, '16GB', 48000), (4001, @today, '32GB', 95000),
+(4002, @today, '8GB', 28000),  (4002, @today, '16GB', 52000),
+(4003, @today, '16GB', 75000), (4003, @today, '32GB', 145000),
+(4004, @today, '16GB', 85000), (4004, @today, '32GB', 160000),
+(4005, @today, '16GB', 90000), (4005, @today, '32GB', 175000), (4005, @today, '48GB', 260000);
 
 -- ---------------- SSD (삼성전자) ----------------
+-- [갱신] RAM과 마찬가지로 용량은 option_name("500GB"/"1TB")에서 파싱하는
+-- 방식으로 코드가 바뀌어(실제 다나와 옵션 형태), 옵션에 용량을 넣었다.
 INSERT INTO ssd_products (product_id, name, company, usage_type, capacity_gb, interface) VALUES
-(5001, '삼성전자 980 M.2 NVMe 500GB', '삼성전자', 'consumer', 500, 'NVMe PCIe3.0'),
-(5002, '삼성전자 980 PRO M.2 NVMe 1TB', '삼성전자', 'consumer', 1000, 'NVMe PCIe4.0'),
-(5003, '삼성전자 990 PRO M.2 NVMe 2TB', '삼성전자', 'consumer', 2000, 'NVMe PCIe4.0');
+(5001, '삼성전자 980 M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe3.0'),
+(5002, '삼성전자 980 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0'),
+(5003, '삼성전자 990 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0');
 
 INSERT INTO ssd_prices (product_id, crawl_date, option_name, price) VALUES
-(5001, @today, '기본', 65000), (5002, @today, '기본', 130000), (5003, @today, '기본', 240000);
+(5001, @today, '250GB', 45000), (5001, @today, '500GB', 65000), (5001, @today, '1TB', 110000),
+(5002, @today, '1TB', 130000),  (5002, @today, '2TB', 250000),
+(5003, @today, '1TB', 160000),  (5003, @today, '2TB', 290000), (5003, @today, '4TB', 550000);
 
--- ---------------- HDD (Western Digital) ----------------
+-- ---------------- HDD (Western Digital/Seagate) ----------------
 INSERT INTO hdd_products (product_id, name, company, usage_type, capacity_gb) VALUES
-(6001, 'Western Digital Blue 2TB', 'Western Digital', 'consumer', 2000),
-(6002, 'Western Digital Blue 4TB', 'Western Digital', 'consumer', 4000);
+(6001, 'Western Digital BLUE 7200/256M', 'Western Digital', 'consumer', NULL),
+(6002, 'Seagate BarraCuda 7200/256M', 'Seagate', 'consumer', NULL);
 
 INSERT INTO hdd_prices (product_id, crawl_date, option_name, price) VALUES
-(6001, @today, '기본', 75000), (6002, @today, '기본', 130000);
+(6001, @today, '1TB', 60000), (6001, @today, '2TB', 75000), (6001, @today, '4TB', 130000),
+(6002, @today, '2TB', 72000), (6002, @today, '4TB', 125000), (6002, @today, '8TB', 230000);
 
 -- ---------------- 쿨러 (DEEPCOOL) ----------------
-INSERT INTO cooler_products (product_id, name, company, usage_type, support_sockets, height_mm, cooler_type, radiator_mm, max_tdp_w) VALUES
-(7001, 'DEEPCOOL AK400', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 155, '공랭', NULL, 180),
-(7002, 'DEEPCOOL AK500', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 160, '공랭', NULL, 220),
-(7003, 'DEEPCOOL AK620', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 160, '공랭', NULL, 260),
-(7004, 'DEEPCOOL AS500', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 158, '공랭', NULL, 220),
-(7005, 'DEEPCOOL LS520', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 240, 260),
-(7006, 'DEEPCOOL LS720', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 360, 320),
-(7007, 'DEEPCOOL LT720', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 360, 350);
+-- radiator_length_mm는 라디에이터 "급"(240/360)이 아니라 실측 길이(240급≈282,
+-- 360급≈402)다 — cooler_radiator_type_fill.sql이 다나와 스펙에서 긁는 값과
+-- 같은 단위이고, 알고리즘의 대형 라디에이터 판정(>=390)도 이 단위 기준이다.
+INSERT INTO cooler_products (product_id, name, company, usage_type, support_sockets, height_mm, cooler_type, radiator_length_mm, radiator_thickness_mm, tdp_rating_w) VALUES
+(7001, 'DEEPCOOL AK400', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 155, '공랭', NULL, NULL, 180),
+(7002, 'DEEPCOOL AK500', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 160, '공랭', NULL, NULL, 220),
+(7003, 'DEEPCOOL AK620', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 160, '공랭', NULL, NULL, 260),
+(7004, 'DEEPCOOL AS500', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', 158, '공랭', NULL, NULL, 220),
+(7005, 'DEEPCOOL LS520', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 282, 27, 260),
+(7006, 'DEEPCOOL LS720', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 402, 27, 320),
+(7007, 'DEEPCOOL LT720', 'DEEPCOOL', 'consumer', 'LGA1700,AM5,AM4', NULL, '수랭', 402, 27, 350);
 
 INSERT INTO cooler_prices (product_id, crawl_date, option_name, price) VALUES
 (7001, @today, '기본', 39000), (7002, @today, '기본', 55000), (7003, @today, '기본', 68000),
@@ -124,12 +141,19 @@ INSERT INTO power_products (product_id, name, company, usage_type, rated_w, form
 (8004, '마이크로닉스 카이저 800W 80PLUS 골드', '마이크로닉스', 'consumer', 800, 'ATX'),
 (8005, '마이크로닉스 카이저 850W 80PLUS 골드', '마이크로닉스', 'consumer', 850, 'ATX'),
 (8006, '마이크로닉스 카이저 1000W 80PLUS 골드', '마이크로닉스', 'consumer', 1000, 'ATX'),
-(8007, '마이크로닉스 SFX 리코드 650W 골드', '마이크로닉스', 'consumer', 650, 'SFX');
+(8007, '마이크로닉스 SFX 리코드 650W 골드', '마이크로닉스', 'consumer', 650, 'SFX'),
+-- ATX 3.x/12VHPWR 명시 모델 — core/psu_rules.py 가이드 규칙상 고성능 GPU
+-- (tier_rank>=9, RTX 4070Ti/5070Ti 이상)는 상품명에 이 표기가 있는 PSU만
+-- 후보가 되므로, 목업에도 최소 몇 개는 있어야 성능 모드 견적이 나온다.
+(8008, '마이크로닉스 Classic II 풀체인지 850W 80PLUS 골드 ATX3.1 (12VHPWR)', '마이크로닉스', 'consumer', 850, 'ATX'),
+(8009, '시소닉 FOCUS GX-1000 80PLUS 골드 ATX 3.0 (12VHPWR)', '시소닉', 'consumer', 1000, 'ATX'),
+(8010, '커세어 RM1200x SHIFT 80PLUS 골드 ATX3.0 (12V-2x6)', '커세어', 'consumer', 1200, 'ATX');
 
 INSERT INTO power_prices (product_id, crawl_date, option_name, price) VALUES
 (8001, @today, '기본', 45000), (8002, @today, '기본', 55000), (8003, @today, '기본', 65000),
 (8004, @today, '기본', 95000), (8005, @today, '기본', 105000), (8006, @today, '기본', 140000),
-(8007, @today, '기본', 110000);
+(8007, @today, '기본', 110000), (8008, @today, '기본', 150000), (8009, @today, '기본', 230000),
+(8010, @today, '기본', 320000);
 
 -- ---------------- 케이스 (darkFlash/앱코) ----------------
 INSERT INTO case_products (product_id, name, company, usage_type, support_form_factors, max_cooler_height_mm, max_vga_length_mm, support_psu_form_factors, support_radiator_mm) VALUES
@@ -147,24 +171,28 @@ INSERT INTO case_prices (product_id, crawl_date, option_name, price) VALUES
 -- ============================================================
 -- 게임/용도 요구사양
 -- ============================================================
-INSERT INTO game_requirements (id, title, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type) VALUES
-(1, '리그 오브 레전드', 0, 0, 8, NULL),
-(2, '발로란트', 0, 0, 8, NULL),
-(3, '오버워치 2', 1, 1, 16, NULL),
-(4, '배틀그라운드', 3, 4, 16, NULL),
-(5, '엘든 링', 2, 3, 16, NULL),
-(6, '사이버펑크 2077', 5, 7, 16, NULL),
-(7, '배틀필드 2042', 4, 6, 16, NULL),
-(8, '스타필드', 4, 6, 16, NULL),
-(9, '블랙 미쓰: 오공', 6, 9, 32, NULL),
-(10, '알란 웨이크 2', 6, 9, 16, NULL);
+-- 구조는 New_crawler/game_requirements_schema.sql, 등급값은 performance_tier.sql
+-- 스케일(CPU 1~24 / GPU 1~14) 기준의 목업 예시값. storage_gb는 각 게임의
+-- 대략적인 설치 용량. 실제 서비스 값은 확정 후 별도 입력.
+INSERT INTO game_requirements (id, game_name, cpu_tier_rank, cpu_display, gpu_tier_rank, gpu_display, ram_gb, storage_gb, source_url, updated_at) VALUES
+(1,  '리그 오브 레전드', 1,  'i3-13100',      1,  'RTX 5050',       8,  30,  NULL, '2026-08-14'),
+(2,  '발로란트',         1,  'i3-13100',      1,  'RTX 5050',       8,  30,  NULL, '2026-08-14'),
+(3,  '오버워치 2',       3,  'i5-13400',      2,  'RTX 4060',       16, 50,  NULL, '2026-08-14'),
+(4,  '배틀그라운드',     8,  '울트라5 245K',  5,  'RTX 5060 Ti',    16, 80,  NULL, '2026-08-14'),
+(5,  '엘든 링',          6,  '울트라5 235',   4,  'RTX 4060 Ti',    16, 60,  NULL, '2026-08-14'),
+(6,  '사이버펑크 2077',  13, '울트라7 265K',  9,  'RTX 4070 Ti',    16, 70,  NULL, '2026-08-14'),
+(7,  '배틀필드 2042',    11, 'i7-13700',      7,  'RTX 4070 SUPER', 16, 100, NULL, '2026-08-14'),
+(8,  '스타필드',         11, 'i7-13700',      7,  'RTX 4070 SUPER', 16, 125, NULL, '2026-08-14'),
+(9,  '블랙 미쓰: 오공',  18, 'i9-13900',      12, 'RTX 5080',       32, 130, NULL, '2026-08-14'),
+(10, '알란 웨이크 2',    18, 'i9-13900',      12, 'RTX 5080',       16, 90,  NULL, '2026-08-14');
 
-INSERT INTO usage_profiles (id, code, display_name, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type) VALUES
-(1, 'OFFICE', '문서작업/인터넷', 0, 0, 8, NULL),
-(2, 'VIDEO_EDITING', '영상편집', 5, 5, 32, 'DDR5'),
-(3, 'RENDERING_3D', '3D 렌더링/모델링', 7, 8, 32, 'DDR5'),
-(4, 'STREAMING', '방송/스트리밍', 5, 3, 32, NULL),
-(5, 'DEVELOPMENT', '개발/컴파일', 4, 0, 32, NULL);
+-- 등급/저장장치 값은 update_usage_profiles_v2.sql("PC 용도별 견적 가이드")과 동일.
+INSERT INTO usage_profiles (id, code, display_name, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type, required_ssd_gb, required_hdd_gb) VALUES
+(1, 'OFFICE', '문서작업/인터넷', 3, 1, 16, NULL, 512, 0),
+(2, 'VIDEO_EDITING', '영상편집', 9, 5, 32, 'DDR5', 1000, 2000),
+(3, 'RENDERING_3D', '3D 렌더링/모델링', 12, 10, 64, 'DDR5', 2000, 4000),
+(4, 'STREAMING', '방송/스트리밍', 9, 5, 32, NULL, 1000, 0),
+(5, 'DEVELOPMENT', '개발/컴파일', 9, 1, 32, NULL, 1000, 0);
 
 -- ============================================================
 -- 부품 사진/링크 목업 (실제 product_media 연결 전까지의 플레이스홀더)
@@ -211,8 +239,6 @@ INSERT INTO product_media (category, product_id, image_url, product_url) VALUES
 ('ram', 4003, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNmYWNjMTUiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2ZhY2MxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkFNPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=4003'),
 ('ram', 4004, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNmYWNjMTUiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2ZhY2MxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkFNPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=4004'),
 ('ram', 4005, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNmYWNjMTUiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2ZhY2MxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkFNPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=4005'),
-('ram', 4006, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNmYWNjMTUiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2ZhY2MxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkFNPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=4006'),
-('ram', 4007, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNmYWNjMTUiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2ZhY2MxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkFNPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=4007'),
 ('ssd', 5001, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNhNzhiZmEiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2E3OGJmYSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1NEPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=5001'),
 ('ssd', 5002, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNhNzhiZmEiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2E3OGJmYSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1NEPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=5002'),
 ('ssd', 5003, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMWEyNTQwIi8+CjxjaXJjbGUgY3g9IjE1MCIgY3k9IjEyMCIgcj0iNTUiIGZpbGw9IiNhNzhiZmEiIG9wYWNpdHk9IjAuMjUiLz4KPHRleHQgeD0iMTUwIiB5PSIxMzUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI2E3OGJmYSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1NEPC90ZXh0Pgo8dGV4dCB4PSIxNTAiIHk9IjIwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNjN2NlZTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuydtOuvuOyngCDspIDruYTspJE8L3RleHQ+Cjwvc3ZnPg==', 'https://prod.danawa.com/info/?pcode=5003'),
