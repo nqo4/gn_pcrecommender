@@ -45,6 +45,11 @@ function extraSpecLine(category: string, part: Part): string | null {
       if (num(part.heatsink_height_mm)) items.push(`방열판 높이 ${part.heatsink_height_mm}mm`);
       break;
     case "psu": {
+      // rated_w/form_factor는 add_compat_columns.sql 때부터 있던 기존 컬럼인데
+      // 표시 목록에서 빠져 있었다.
+      if (num(part.rated_w)) items.push(`정격출력 ${part.rated_w}W`);
+      if (part.form_factor) items.push(`폼팩터 ${part.form_factor}`);
+      if (num(part.depth_mm)) items.push(`깊이 ${part.depth_mm}mm`);
       const certs: string[] = [];
       if (part.eta_certification) certs.push(`ETA ${part.eta_certification}`);
       if (part.lambda_certification) certs.push(`LAMBDA ${part.lambda_certification}`);
