@@ -45,11 +45,13 @@ SET p.power_min_w = CASE WHEN spec.pmin_raw BETWEEN 1 AND 2000 THEN spec.pmin_ra
 WHERE p.power_min_w IS NULL;
 
 -- 3) 전력(TDP/PPT 방식: AMD는 TDP=최소/PPT=최대, 일부 구형 인텔은 TDP만 단독으로 존재)
+-- [수정] REGEXP_REPLACE(spec_value, '[^0-9]', '')는 값에 숫자가 두 번 나오면
+--        이어붙여 엉뚱한 값이 될 수 있다 - 첫 숫자 덩어리만 뽑는 REGEXP_SUBSTR로 교체.
 UPDATE IGNORE cpu_products p
 JOIN (
     SELECT t.product_id,
-           CAST(REGEXP_REPLACE(t.spec_value, '[^0-9]', '') AS UNSIGNED) AS tdp_raw,
-           CAST(REGEXP_REPLACE(pp.spec_value, '[^0-9]', '') AS UNSIGNED) AS ppt_raw
+           CAST(REGEXP_SUBSTR(t.spec_value, '[0-9]+') AS UNSIGNED) AS tdp_raw,
+           CAST(REGEXP_SUBSTR(pp.spec_value, '[0-9]+') AS UNSIGNED) AS ppt_raw
     FROM danawa_spec_summary t
     LEFT JOIN danawa_spec_summary pp
       ON pp.category = 'cpu' AND pp.product_id = t.product_id AND pp.spec_key LIKE '%PPT%'
