@@ -12,6 +12,7 @@ MySQL로 전환했다. db/schema.sql이 그 저장소의 danawa_only_load.sql(�
   DANAWA_DB_NAME 기본값은 "DW_db"(저장소 스키마의 실제 DB명).
 """
 import os
+import re
 
 import mysql.connector
 from mysql.connector.pooling import PooledMySQLConnection
@@ -72,25 +73,39 @@ def _split_statements(sql_text: str) -> list[str]:
 
 def init_db() -> None:
     """schema.sql + seed_data.sql을 실행해 DB를 새로 만든다.
-    스키마 자체가 USE DW_db로 시작하므로, 최초 연결은 database 지정 없이 연다.
 
     *** 수정: mysql-connector-python 최신 버전(26.x)에서 cursor.execute(sql,
     multi=True)가 더 이상 지원되지 않아서(TypeError), 문(statement) 단위로
     나눠 하나씩 실행하는 방식으로 바꿨다. ***
+
+    *** 수정(DB명 파라미터화): 예전엔 schema.sql이 CREATE DATABASE DW_db/USE
+    DW_db를 하드코딩해서 DANAWA_DB_NAME을 바꿔도 무시됐다 — 실크롤링 데이터가
+    든 DW_db를 목업으로 덮어쓸 위험이 있었다. 이제 CREATE/USE를 여기서
+    DANAWA_DB_NAME 값으로 실행하므로, 목업 테스트는
+    DANAWA_DB_NAME=DW_db_mock python db/db.py 처럼 다른 DB에 안전하게 만들 수 있다.
     """
     config = _db_config()
+    db_name = config["database"]
+    if not re.fullmatch(r"[0-9a-zA-Z$_]+", db_name):
+        raise ValueError(f"DB 이름에 허용되지 않는 문자가 있습니다: {db_name!r}")
+
     bootstrap_config = {k: v for k, v in config.items() if k != "database"}
     conn = mysql.connector.connect(**bootstrap_config)
     cursor = conn.cursor()
+    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4")
+    cursor.execute(f"USE `{db_name}`")
 
-    schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
-    seed_path = os.path.join(os.path.dirname(__file__), "seed_data.sql")
-
-    for path in (schema_path, seed_path):
+    # create_price_views.sql까지 실행한다 — 최신가 뷰 정의는 그 파일이 유일한
+    # 정의처다(예전엔 schema.sql에 중복돼 있어 한쪽만 고치면 어긋났다).
+    base_dir = os.path.dirname(__file__)
+    for name in ("schema.sql", "seed_data.sql", "create_price_views.sql"):
+        path = os.path.join(base_dir, name)
         with open(path, encoding="utf-8") as f:
             sql_text = f.read()
         for statement in _split_statements(sql_text):
             cursor.execute(statement)
+            if cursor.with_rows:  # 진행 확인용 SELECT의 결과를 비워야 다음 문장이 실행됨
+                cursor.fetchall()
         conn.commit()
         print(f"실행 완료: {path}")
 

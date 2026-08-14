@@ -12,10 +12,23 @@
 --    원본 add_compat_columns.sql은 쿨러 냉각 용량(TDP 감당치), 라디에이터
 --    크기, RAM/SSD/HDD 용량 컬럼이 없어서 수랭 매칭·용량 기반 검색이
 --    불가능했다. 기획서 5.1절 조건을 실제로 계산하려면 필요해서 추가했다.
+-- 3) [갱신] 실데이터 파이프라인과 코드가 쓰는 스키마에 맞췄다:
+--    - cpu/vga_products.tier_rank (New_crawler/performance_tier.sql이 ALTER로
+--      추가하는 컬럼 — core/algorithm.py가 후보 필터링에 직접 사용)
+--    - cooler_products.tdp_rating_w (예전 이름 max_tdp_w는 코드 어디서도 안
+--      쓰고, db/add_cooler_tdp_column.sql·core/algorithm.py가 이 이름을 씀)
+--    - game_requirements: New_crawler/game_requirements_schema.sql 구조 그대로
+--      (api/server.py가 game_name/cpu_tier_rank/storage_gb를 조회함)
+--    - usage_profiles.required_ssd_gb/required_hdd_gb (update_usage_profiles_v2.sql)
+--    - danawa_spec_summary (spec_scraper.py 구조 — algorithm.py가 RAM 방열판
+--      높이 등을 여기서 직접 조회하므로 목업 DB에도 테이블 자체는 있어야 함)
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS DW_db CHARACTER SET utf8mb4;
-USE DW_db;
+-- [갱신] CREATE DATABASE/USE 문은 제거 — 대상 DB는 db/db.py의 init_db가
+-- DANAWA_DB_NAME 환경변수(기본 DW_db)로 만들고 선택한다. 실크롤링 데이터가
+-- 든 DW_db를 실수로 날리지 않도록, 목업 테스트는 DANAWA_DB_NAME을 다른
+-- 이름으로 주고 돌리면 된다. (mysql CLI로 직접 실행할 땐
+--  mysql ... <DB명> < schema.sql 처럼 DB를 지정해서 실행)
 
 -- ---------------- CPU ----------------
 DROP TABLE IF EXISTS cpu_products;
@@ -27,7 +40,8 @@ CREATE TABLE cpu_products (
     has_igpu     VARCHAR(10)  NULL,
     power_min_w  SMALLINT UNSIGNED NULL,
     power_max_w  SMALLINT UNSIGNED NULL,
-    socket       VARCHAR(30)  NULL          -- add_compat_columns.sql
+    socket       VARCHAR(30)  NULL,         -- add_compat_columns.sql
+    tier_rank    INT NULL                   -- performance_tier.sql (기획서 6.2 성능 등급)
 );
 
 DROP TABLE IF EXISTS cpu_prices;
@@ -49,7 +63,8 @@ CREATE TABLE vga_products (
     usage_type        VARCHAR(20),
     length_mm         SMALLINT UNSIGNED NULL,   -- add_compat_columns.sql
     recommended_psu_w SMALLINT UNSIGNED NULL,   -- add_compat_columns.sql
-    power_connector   VARCHAR(50) NULL          -- add_compat_columns.sql
+    power_connector   VARCHAR(50) NULL,         -- add_compat_columns.sql
+    tier_rank         INT NULL                  -- performance_tier.sql (기획서 6.1 성능 등급)
 );
 
 DROP TABLE IF EXISTS vga_prices;
@@ -158,8 +173,9 @@ CREATE TABLE cooler_products (
     support_sockets  VARCHAR(300) NULL,          -- add_compat_columns.sql
     height_mm        SMALLINT UNSIGNED NULL,     -- add_compat_columns.sql
     cooler_type      VARCHAR(20) NULL,           -- add_compat_columns.sql
-    radiator_mm      SMALLINT UNSIGNED NULL,     -- ★ 저장소에 없어서 추가(수랭 매칭에 필수)
-    max_tdp_w        SMALLINT UNSIGNED NULL      -- ★ 저장소에 없어서 추가(CPU 발열 감당 검증에 필수)
+    radiator_length_mm    SMALLINT UNSIGNED NULL,  -- cooler_radiator_type_fill.sql(라디에이터 실측 길이, 예: 282/402)
+    radiator_thickness_mm SMALLINT UNSIGNED NULL,  -- cooler_radiator_type_fill.sql
+    tdp_rating_w          SMALLINT UNSIGNED NULL   -- add_cooler_tdp_column.sql(CPU 발열 감당 검증에 필수)
 );
 
 DROP TABLE IF EXISTS cooler_prices;
@@ -218,120 +234,40 @@ CREATE TABLE case_prices (
 );
 
 -- ============================================================
--- 최신가 뷰 — 각 상품의 가장 최근 crawl_date 기준 최저가.
+-- 최신가 뷰(*_products_v)는 여기 없다 — db/create_price_views.sql이 유일한
+-- 정의처다(예전엔 두 파일에 중복돼 있어 한쪽만 고치면 어긋났다).
+-- db/db.py의 init_db가 schema.sql -> seed_data.sql -> create_price_views.sql
+-- 순서로 실행해서 목업 DB에도 같은 뷰가 만들어진다.
 -- ============================================================
-DROP VIEW IF EXISTS cpu_products_v;
-CREATE VIEW cpu_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM cpu_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM cpu_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM cpu_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS vga_products_v;
-CREATE VIEW vga_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM vga_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM vga_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM vga_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS mboard_products_v;
-CREATE VIEW mboard_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM mboard_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM mboard_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM mboard_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS ram_products_v;
-CREATE VIEW ram_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM ram_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM ram_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM ram_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS ssd_products_v;
-CREATE VIEW ssd_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM ssd_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM ssd_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM ssd_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS hdd_products_v;
-CREATE VIEW hdd_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM hdd_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM hdd_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM hdd_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS cooler_products_v;
-CREATE VIEW cooler_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM cooler_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM cooler_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM cooler_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS power_products_v;
-CREATE VIEW power_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM power_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM power_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM power_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
-
-DROP VIEW IF EXISTS case_products_v;
-CREATE VIEW case_products_v AS
-SELECT p.*, latest.price AS price_krw
-FROM case_products p
-JOIN (
-    SELECT product_id, MIN(price) AS price
-    FROM case_prices
-    WHERE crawl_date = (SELECT MAX(crawl_date) FROM case_prices)
-    GROUP BY product_id
-) latest ON latest.product_id = p.product_id;
 
 -- ============================================================
--- 게임/용도 요구사양 (기획서 2.1절 — 저장소엔 없는, 이 프로젝트 자체 테이블)
+-- 게임/용도 요구사양 (기획서 2.1절)
+-- game_requirements는 New_crawler/game_requirements_schema.sql과 동일 구조 —
+-- api/server.py가 game_name/cpu_tier_rank/gpu_tier_rank/ram_gb/storage_gb를
+-- 그대로 조회하므로 목업 DB도 같은 컬럼명을 써야 한다.
 -- ============================================================
 DROP TABLE IF EXISTS game_requirements;
 CREATE TABLE game_requirements (
-    id                  INT PRIMARY KEY,
-    title               VARCHAR(100) NOT NULL,
-    required_cpu_tier   TINYINT,
-    required_gpu_tier   TINYINT,
-    required_ram_gb     SMALLINT,
-    required_ram_type   VARCHAR(10) NULL
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    game_name           VARCHAR(100) NOT NULL UNIQUE,
+
+    -- 권장 사양 (이 시스템의 기준 사양 - 최소사양은 사용하지 않음)
+    cpu_tier_rank       INT NULL,          -- cpu_performance_tier.tier_rank 참조
+    cpu_display         VARCHAR(50) NULL,  -- 원문 표기, 예: "i7-13700"
+    gpu_tier_rank       INT NULL,          -- gpu_performance_tier.tier_rank 참조
+    gpu_display         VARCHAR(50) NULL,  -- 예: "RTX 4070"
+    ram_gb              SMALLINT UNSIGNED NULL,
+    storage_gb          SMALLINT UNSIGNED NULL,
+
+    source_url          VARCHAR(300) NULL,
+    updated_at          DATE NULL,
+
+    INDEX idx_cpu (cpu_tier_rank),
+    INDEX idx_gpu (gpu_tier_rank)
 );
 
+-- required_ssd_gb/required_hdd_gb: update_usage_profiles_v2.sql에서 추가된
+-- 컬럼(용도별 저장장치 요구량) — merge_requirements가 사용.
 DROP TABLE IF EXISTS usage_profiles;
 CREATE TABLE usage_profiles (
     id                  INT PRIMARY KEY,
@@ -340,13 +276,17 @@ CREATE TABLE usage_profiles (
     required_cpu_tier   TINYINT,
     required_gpu_tier   TINYINT,
     required_ram_gb     SMALLINT,
-    required_ram_type   VARCHAR(10) NULL
+    required_ram_type   VARCHAR(10) NULL,
+    required_ssd_gb     SMALLINT UNSIGNED NULL,
+    required_hdd_gb     SMALLINT UNSIGNED NULL DEFAULT 0
 );
 
 -- ============================================================
 -- 부품 사진/링크 (실제 저장소의 spec_scraper.py가 만드는 product_media
--- 테이블과 정확히 같은 구조 — 나중에 실제 덤프가 들어오면 코드 변경 없이
+-- 테이블과 같은 구조 — 나중에 실제 덤프가 들어오면 코드 변경 없이
 -- 그대로 연결된다. 지금은 목업 플레이스홀더 이미지로 채운다.
+-- ※ image_url만 원본(VARCHAR(500))과 달리 TEXT — 목업이 base64 data URI를
+--   넣는데 500자를 넘기 때문. 실제 덤프(URL)와도 호환된다.
 -- ============================================================
 DROP TABLE IF EXISTS product_media;
 CREATE TABLE product_media (
@@ -355,4 +295,22 @@ CREATE TABLE product_media (
     image_url   TEXT NULL,
     product_url VARCHAR(300) NULL,
     PRIMARY KEY (category, product_id)
+);
+
+-- ============================================================
+-- 다나와 스펙 요약 (spec_scraper.py의 CREATE TABLE과 동일 구조).
+-- core/algorithm.py가 RAM 방열판 높이 등을 이 테이블에서 직접 조회하므로
+-- 목업 DB에도 테이블 자체는 있어야 한다(비어 있으면 해당 값이 NULL로
+-- 조회될 뿐 에러는 없다).
+-- ============================================================
+DROP TABLE IF EXISTS danawa_spec_summary;
+CREATE TABLE danawa_spec_summary (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    category    VARCHAR(20) NOT NULL,
+    product_id  BIGINT UNSIGNED NOT NULL,
+    spec_key    VARCHAR(150),
+    spec_value  VARCHAR(300) NOT NULL,
+    spec_order  INT NOT NULL,
+    scraped_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_lookup (category, product_id)
 );
