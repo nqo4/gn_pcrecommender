@@ -811,8 +811,23 @@ def check_bottleneck(cpu_row: dict, gpu_row: dict) -> bool:
     return abs(ct_norm - gt_norm) > 0.55
 
 
-# 성능 모드 다운그레이드 순서(2.4절): 가성비 모드의 정반대
-DOWNGRADE_ORDER = ["case", "psu", "cooler", "ram", "mboard", "gpu", "cpu"]
+# 성능 모드 다운그레이드 순서(2.4절): 원래 "가성비 모드의 정반대"(케이스부터
+# CPU까지 역순)였다.
+# *** 수정(실사용자 발견: "가벼운 요구조건인데도 성능 모드 바닥이 필요 이상으로
+# 비싸다" — psu/cooler/mboard가 전부 이 문제였다) *** psu(cpu 체급별 최소
+# 와트수+gpu 필요 전력), cooler(cpu 체급별 공랭/수랭 강제), mboard(cpu/gpu
+# 체급 기준 라인업 매칭)는 전부 "아직 안 낮아진 cpu/gpu"를 기준으로 요구치를
+# 계산한다. 이 셋이 cpu/gpu보다 먼저 다운그레이드되면, cpu/gpu가 최고 사양인
+# 채로 평가되어 필요 이상으로 부풀려진 요구치(750W+ PSU, 무조건 수랭, 고급
+# 라인업 보드)에 갇히고, 나중에 cpu/gpu가 실제로 싸져도 이미 확정된 뒤라
+# 재검토가 안 된다. 이제 cpu/gpu(아래 "gpu" 스테이지에서 함께 처리)를 먼저
+# 확정한 뒤 psu/cooler/mboard를 처리한다 — ram은 cpu/gpu와 무관해서 순서
+# 상관없지만 mboard/cooler가 참조하니 그보다는 앞에 둔다. case는 mboard/
+# cooler/gpu/psu에 의존하지만, case의 제약(폼팩터·길이·높이)은 "더 큰/비싼
+# 부품 기준으로 고른 케이스는 그보다 작은/싼 부품도 대개 그대로 수용"하는
+# 방향이라(예: ATX 지원 케이스는 나중에 mboard가 M-ATX로 줄어도 대개 계속
+# 맞음) 먼저 평가해도 안전하다 — 그래서 case만 예외적으로 계속 맨 앞.
+DOWNGRADE_ORDER = ["case", "ram", "gpu", "psu", "cooler", "mboard"]
 
 
 def build_performance(
@@ -865,12 +880,9 @@ def build_performance(
         best_within_budget = None
 
         for stage in DOWNGRADE_ORDER:
-            if stage == "cpu":
-                # *** 수정(바로 아래 "gpu" 처리에서 cpu까지 함께 재검토하므로,
-                # 여기서는 따로 할 일이 없다 — 이유는 "gpu" 블록의 주석 참고. ***
-                continue
-
             if stage == "gpu":
+                # cpu는 DOWNGRADE_ORDER에 별도 항목으로 없다 — 아래에서 gpu와
+                # 함께 재검토한다(이유는 바로 다음 주석 참고).
                 # *** 수정(실사용자 발견: "가장 가벼운 게임(요구조건 최소)인데도
                 # 성능 모드가 예산 부족으로 실패한다") ***
                 # cpu/gpu는 check_bottleneck()으로 서로 커플링돼 있는데, 예전엔
