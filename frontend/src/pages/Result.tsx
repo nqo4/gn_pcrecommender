@@ -56,13 +56,27 @@ function extraSpecLine(category: string, part: Part): string | null {
       if (part.support_sockets) items.push(`지원 소켓 ${part.support_sockets}`);
       if (num(part.tdp_rating_w)) items.push(`TDP ${part.tdp_rating_w}W`);
       break;
-    case "case":
+    case "case": {
+      // support_form_factors/max_vga_length_mm/max_cooler_height_mm/
+      // support_psu_form_factors는 add_compat_columns.sql 때부터 있던 기존
+      // 호환성 컬럼(오늘 신설한 확장 컬럼이 아님) — 표시 목록에서 빠져 있었다.
+      if (part.support_form_factors) items.push(`지원보드 ${part.support_form_factors}`);
+      const clearance: string[] = [];
+      if (num(part.max_vga_length_mm)) clearance.push(`VGA ${part.max_vga_length_mm}mm`);
+      if (num(part.max_cooler_height_mm)) clearance.push(`쿨러높이 ${part.max_cooler_height_mm}mm`);
+      if (clearance.length) items.push(clearance.join(" · "));
+      if (part.support_psu_form_factors) items.push(`지원파워 ${part.support_psu_form_factors}`);
+      const psu: string[] = [];
+      if (part.psu_position) psu.push(`파워위치 ${part.psu_position}`);
+      if (num(part.psu_max_length_mm)) psu.push(`파워장착길이 ${part.psu_max_length_mm}mm`);
+      if (psu.length) items.push(psu.join(" · "));
       if (num(part.ext_width_mm) && num(part.ext_depth_mm) && num(part.ext_height_mm)) {
         items.push(`외형 ${part.ext_width_mm}×${part.ext_depth_mm}×${part.ext_height_mm}mm`);
       }
       if (part.panel_type) items.push(String(part.panel_type));
       if (num(part.fan_count)) items.push(`쿨링팬 ${part.fan_count}개`);
       break;
+    }
   }
   return items.length ? items.join(" · ") : null;
 }
