@@ -865,6 +865,94 @@ def build_performance(
         best_within_budget = None
 
         for stage in DOWNGRADE_ORDER:
+            if stage == "cpu":
+                # *** 수정(바로 아래 "gpu" 처리에서 cpu까지 함께 재검토하므로,
+                # 여기서는 따로 할 일이 없다 — 이유는 "gpu" 블록의 주석 참고. ***
+                continue
+
+            if stage == "gpu":
+                # *** 수정(실사용자 발견: "가장 가벼운 게임(요구조건 최소)인데도
+                # 성능 모드가 예산 부족으로 실패한다") ***
+                # cpu/gpu는 check_bottleneck()으로 서로 커플링돼 있는데, 예전엔
+                # gpu를 cpu보다 먼저 독립적으로 낮췄다 — gpu를 낮추는 시점엔 cpu가
+                # 아직 최고 사양(예: i9-14900KS) 그대로라, "그 비싼 cpu와 병목 안
+                # 나는 gpu"로 후보가 인위적으로 좁혀졌다(그 cpu 기준으론 RTX4070
+                # 이상만 통과, 진짜 싼 RTX5050은 애초에 후보에서 빠짐). 나중에
+                # cpu가 실제로 싸져도 gpu는 이미 그 시점에 고정된 뒤라 재검토가
+                # 안 됐다 — 그 결과 다운그레이드 바닥이 실제보다 훨씬 높게 나왔다.
+                # 이제 gpu 단계에서 cpu까지 함께 재검토한다: cpu 후보(비싼순)를
+                # 현재값부터 하나씩 내려가며, 그 cpu와 병목 안 나는 gpu 중 가장
+                # 비싼(=현재값에 제일 가까운) 것부터 확인해서 예산 안에 드는 첫
+                # 조합을 채택한다 — 기존 "한 단계씩" 철학을 cpu+gpu 쌍에 그대로
+                # 적용한 것뿐이고, 아래(case/psu/cooler/ram/mboard) 로직과 동일한
+                # "예산 안 후보 없으면 최저가라도 채택" 폴백도 그대로 유지한다.
+                cpu_candidates = candidates_for("cpu")
+                gpu_context = {s: current[s] for s in STAGES if s not in ("gpu", "cpu")}
+                gpu_candidates = get_candidates(conn, "gpu", gpu_context, req, opt, "perf")
+
+                try:
+                    cpu_cur_pos = next(i for i, c in enumerate(cpu_candidates) if c["product_id"] == current["cpu"]["product_id"])
+                except StopIteration:
+                    cpu_cur_pos = 0
+                try:
+                    gpu_cur_pos = next(i for i, c in enumerate(gpu_candidates) if c["product_id"] == current["gpu"]["product_id"])
+                except StopIteration:
+                    gpu_cur_pos = 0
+
+                review_retries = 0
+                cheapest_pair, cheapest_total = None, None
+                found = False
+
+                for cpu_pos in range(cpu_cur_pos, len(cpu_candidates)):
+                    cand_cpu = cpu_candidates[cpu_pos]
+                    gpu_start = gpu_cur_pos + 1 if cpu_pos == cpu_cur_pos else 0
+                    for gpu_pos in range(gpu_start, len(gpu_candidates)):
+                        cand_gpu = gpu_candidates[gpu_pos]
+                        if check_bottleneck(cand_cpu, cand_gpu):
+                            continue
+
+                        trial = dict(current)
+                        trial["cpu"], trial["gpu"] = cand_cpu, cand_gpu
+                        total = sum(p["price_krw"] for p in trial.values())
+                        if cheapest_total is None or total < cheapest_total:
+                            cheapest_pair, cheapest_total = trial, total
+
+                        if total <= parts_budget:
+                            if with_review := (review_retries < MAX_REVIEW_RETRIES_PER_STAGE):
+                                review = gemini_review.review_partial(conn, trial, "gpu")
+                                if review and review["issue"]:
+                                    review_retries += 1
+                                    review_notes.append(
+                                        f"Gemini 검수(다운그레이드): {trial['gpu']['name']} 거부됨({review['reason']}) — 다음 후보로 대체"
+                                    )
+                                    continue
+
+                            current = trial
+                            candidate_cache.pop("mboard", None)
+                            candidate_cache.pop("ram", None)
+                            candidate_cache.pop("cooler", None)
+                            candidate_cache.pop("psu", None)
+                            candidate_cache.pop("case", None)
+                            if best_within_budget is None or total > best_within_budget[0]:
+                                best_within_budget = (total, dict(current))
+                            found = True
+                            break
+                    if found:
+                        break
+                    # 이 cpu로는 어떤 gpu와 짝지어도 예산을 못 맞췄다 -> 다음(더 싼) cpu로
+
+                if not found and cheapest_pair is not None:
+                    current = cheapest_pair
+                    candidate_cache.pop("mboard", None)
+                    candidate_cache.pop("ram", None)
+                    candidate_cache.pop("cooler", None)
+                    candidate_cache.pop("psu", None)
+                    candidate_cache.pop("case", None)
+
+                if best_within_budget is None:
+                    cpu_gpu_floor_reached = True
+                continue
+
             candidates = candidates_for(stage)
             try:
                 cur_pos = next(i for i, c in enumerate(candidates) if c["product_id"] == current[stage]["product_id"])
@@ -936,9 +1024,6 @@ def build_performance(
                     candidate_cache.pop("cooler", None)
                     candidate_cache.pop("psu", None)
                     candidate_cache.pop("case", None)
-
-            if stage in ("cpu", "gpu") and best_within_budget is None:
-                cpu_gpu_floor_reached = True
 
         if best_within_budget is not None:
             total, parts = best_within_budget
