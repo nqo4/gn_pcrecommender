@@ -220,7 +220,15 @@ CREATE TABLE case_products (
     max_cooler_height_mm     SMALLINT UNSIGNED NULL,  -- add_compat_columns.sql
     max_vga_length_mm        SMALLINT UNSIGNED NULL,  -- add_compat_columns.sql
     support_psu_form_factors VARCHAR(50) NULL,   -- add_compat_columns.sql
-    support_radiator_mm      VARCHAR(50) NULL    -- ★ 저장소에 없어서 추가(수랭 매칭에 필수)
+    -- 라디에이터 지원 규격(위치별) — New_crawler/add_missing_spec_columns.sql·
+    -- fill_missing_specs.sql과 동일 컬럼명/구조(예: "240,280,360"). 수랭 쿨러가
+    -- 실제로 이 케이스에 들어가는지 확인하려면 필요(현재 core/algorithm.py는
+    -- 아직 이 컬럼들을 안 씀 — 케이스↔라디에이터 호환 체크가 미구현 상태로
+    -- 남아있는 항목, README에도 명시된 한계).
+    radiator_top_mm          VARCHAR(50) NULL,
+    radiator_side_mm         VARCHAR(50) NULL,
+    radiator_rear_mm         VARCHAR(50) NULL,
+    radiator_front_mm        VARCHAR(50) NULL
 );
 
 DROP TABLE IF EXISTS case_prices;

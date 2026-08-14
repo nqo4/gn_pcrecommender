@@ -486,10 +486,12 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         rows = [r for r in rows if psu["form_factor"] and r["support_psu_form_factors"] and _psu_form_factor_matches(psu["form_factor"], r["support_psu_form_factors"])]
         if cooler["cooler_type"] == "공랭":
             rows = [r for r in rows if (cooler["height_mm"] or 0) <= (r["max_cooler_height_mm"] or 0)]
-        # *** 수정(실제 스키마 연결): case_products에 수랭 라디에이터 지원 크기
-        # 컬럼(support_radiator_mm)이 아직 없어서(나중에 추가 컬럼 작업 때 처리),
-        # 수랭 쿨러를 고른 경우엔 케이스가 실제로 그 라디에이터를 넣을 수 있는지
-        # 확인하지 않는다 — 실제 운영 전에는 반드시 채워야 하는 항목이다. ***
+        # *** 미구현(db/schema.sql에 case_products.radiator_top/side/rear/front_mm
+        # 컬럼은 이미 있음 — New_crawler/add_missing_spec_columns.sql·
+        # fill_missing_specs.sql이 실데이터도 채운다) — 수랭 쿨러를 고른 경우
+        # 케이스가 그 라디에이터(위치·크기)를 실제로 수용하는지는 아직 여기서
+        # 확인하지 않는다. 컬럼은 준비돼 있으니 로직만 추가하면 된다 — 실제
+        # 운영 전에는 반드시 채워야 하는 항목이다. ***
         if opt.placement == "미니 PC":
             rows = [r for r in rows if r["support_form_factors"] == "ITX"]
         elif opt.placement == "책상 위":
