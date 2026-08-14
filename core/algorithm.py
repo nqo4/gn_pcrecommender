@@ -362,6 +362,17 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         # CPU와 GPU 버킷 중 "더 상위"인 쪽을 기준으로 삼는다(가이드 1-②
         # 원문도 "권장 매칭(CPU & GPU)"라고 둘 다 명시하고 있었는데 GPU만
         # 반영했던 게 누락이었다).
+        #
+        # *** 수정(실사용자 발견: "가성비 모드에 DDR4 경쟁을 붙였더니 바로 이
+        # 필터가 막으려던 사고가 재현됨 — i9-14900KS + PRIME H610M-K D4") ***
+        # DDR4 우선순위 강제를 없앤 뒤로 가성비 모드가 DDR4를 고를 수 있게
+        # 됐는데, 이 카탈로그의 DDR4 보드는 전부 보급형(PRIME/PRO) 라인업뿐이라
+        # 상위 CPU/GPU와 짝지어도 "매칭되는 라인업 후보가 하나도 없는" 상황이
+        # 됐다. 예전엔 이럴 때 필터를 그냥 무시하고 미필터 목록(=제일 싼
+        # 보급형 보드)으로 되돌아갔는데, 그게 바로 이 필터가 막으려던 사고
+        # 그 자체다. 이제 하드 필터로 바꿔서, 안 맞으면 이 스테이지를 후보
+        # 소진으로 처리한다 — search()의 기존 백트래킹이 RAM 단계로 돌아가
+        # (DDR4가 안 되면) 다음 RAM 후보(대개 DDR5)를 자연스럽게 재시도한다.
         cpu_bucket = cpu_tier_bucket(cpu.get("tier_rank"))
         gpu = context.get("gpu")
         gpu_bucket = gpu_tier_bucket(gpu.get("tier_rank")) if gpu else None
@@ -369,9 +380,7 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         if buckets:
             idx = max(BUCKET_ORDER.index(b) for b in buckets)
             allowed = set(BUCKET_ORDER[max(0, idx - 1): idx + 2])
-            matched = [r for r in rows if mboard_lineup_bucket(r["name"]) in allowed]
-            if matched:
-                rows = matched
+            rows = [r for r in rows if mboard_lineup_bucket(r["name"]) in allowed]
     elif stage == "cooler":
         # *** 수정(실사용자 제공 CPU-쿨러 발열 매칭 가이드) ***
         # CPU 라인업(등급)에 따라 필요한 쿨러 체급을 강제한다 — 공랭이 이론상
