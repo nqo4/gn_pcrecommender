@@ -17,6 +17,8 @@ function extraSpecLine(category: string, part: Part): string | null {
 
   switch (category) {
     case "cpu":
+      // socket도 add_compat_columns.sql 때부터 있던 기존 컬럼인데 표시 목록에서 빠져 있었다.
+      if (part.socket) items.push(`소켓 ${part.socket}`);
       if (num(part.cinebench_single) && num(part.cinebench_multi)) {
         items.push(`시네벤치 싱글 ${part.cinebench_single} · 멀티 ${part.cinebench_multi}`);
       }
@@ -27,8 +29,9 @@ function extraSpecLine(category: string, part: Part): string | null {
       if (num(part.power_draw_w)) items.push(`사용전력 ${part.power_draw_w}W`);
       break;
     case "mboard": {
-      // ram_type은 add_compat_columns.sql 때부터 있던 기존 컬럼인데 표시 목록에서
-      // 빠져 있었다(실사용자 발견: "메인보드에 DDR4/DDR5 여부가 안 보인다").
+      // socket/ram_type은 add_compat_columns.sql 때부터 있던 기존 컬럼인데 표시
+      // 목록에서 빠져 있었다(실사용자 발견: "메인보드에 DDR4/DDR5 여부가 안 보인다").
+      if (part.socket) items.push(`소켓 ${part.socket}`);
       if (part.ram_type) items.push(String(part.ram_type));
       const slots: string[] = [];
       if (num(part.pcie_x16_count)) slots.push(`PCIe x16 ${part.pcie_x16_count}개`);
