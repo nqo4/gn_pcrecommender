@@ -604,6 +604,23 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         rows = [r for r in rows if meets_80plus_minimum(r["name"], min_tier)]
         if form:
             rows = [r for r in rows if r["form_factor"] == form]
+        # *** 신설(실사용자 발견과 동일한 클래스의 버그: 성능 모드 다운그레이드
+        # 순서(DOWNGRADE_ORDER)에서 case가 psu보다 먼저 확정된다 — case는 그
+        # 시점의 psu 폼팩터를 보고 골라지는데, 여기 psu 후보는 opt.placement가
+        # "미니 PC"가 아니면 폼팩터 필터가 전혀 없어 ATX/SFX/TFX가 가격순으로
+        # 뒤섞인다. 다운그레이드가 더 싼 다른 폼팩터 PSU를 고르면, 이미 확정된
+        # case가 실제로는 그 폼팩터를 지원 안 하는 조합이 나올 수 있다 —
+        # 쿨러-케이스 높이 검증(위 "cooler" 스테이지)과 같은 문제라 같은 방식
+        # (context에 case가 이미 있으면 그 case가 지원하는 폼팩터로 역필터)으로
+        # 막는다. case가 아직 없는 시점(search()의 기본 STAGES 순서 — psu가
+        # case보다 먼저)에는 context에 case가 없으므로 자동으로 건너뛴다. ***
+        case = context.get("case")
+        if case:
+            rows = [
+                r for r in rows
+                if r["form_factor"] and case["support_psu_form_factors"]
+                and _psu_form_factor_matches(r["form_factor"], case["support_psu_form_factors"])
+            ]
     elif stage == "case":
         mboard, cooler, psu = context["mboard"], context["cooler"], context["psu"]
         gpu = context.get("gpu")
