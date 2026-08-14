@@ -220,15 +220,15 @@ def _fetch_ram_options(conn, ram_gb_min: int, mode: str = "perf") -> list[dict]:
     quantity = 2  # 가이드 2절: 무조건 듀얼 채널(동일 용량 2개)이 정석
 
     def _query(ram_type: str) -> list[dict]:
+        # *** 수정(DB 확장: heatsink_height_mm이 danawa_spec_summary 상관
+        # 서브쿼리 대신 ram_products의 실제 컬럼으로 승격됨 — New_crawler/
+        # add_extended_spec_columns.sql·fill_extended_specs.sql 참고) ***
         cursor = conn.cursor(dictionary=True)
         cursor.execute(
             """
             SELECT p.product_id, p.name, pp.option_name, pp.price AS price_krw,
-                   m.image_url, m.product_url,
-                   (SELECT CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)
-                    FROM danawa_spec_summary
-                    WHERE category = 'ram' AND product_id = p.product_id AND spec_key = '높이'
-                    LIMIT 1) AS heatsink_height_mm
+                   p.heatsink_height_mm,
+                   m.image_url, m.product_url
             FROM ram_products p
             JOIN ram_prices pp ON pp.product_id = p.product_id
             LEFT JOIN product_media m ON m.category = 'ram' AND m.product_id = p.product_id

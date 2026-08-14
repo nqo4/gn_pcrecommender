@@ -41,7 +41,12 @@ CREATE TABLE cpu_products (
     power_min_w  SMALLINT UNSIGNED NULL,
     power_max_w  SMALLINT UNSIGNED NULL,
     socket       VARCHAR(30)  NULL,         -- add_compat_columns.sql
-    tier_rank    INT NULL                   -- performance_tier.sql (기획서 6.2 성능 등급)
+    tier_rank    INT NULL,                  -- performance_tier.sql (기획서 6.2 성능 등급)
+    -- [신설] New_crawler/add_extended_spec_columns.sql·fill_extended_specs.sql —
+    -- 시네벤치 점수는 향후 이름 매칭 대신 벤치마크 기반 tier_rank 산출의 근거로 쓸 수 있다.
+    cinebench_single  INT UNSIGNED NULL,    -- spec_key '시네벤치R23(싱글)'
+    cinebench_multi   INT UNSIGNED NULL,    -- spec_key '시네벤치R23(멀티)'
+    memory_support    VARCHAR(30) NULL      -- spec_key '메모리 규격' (예: "DDR5, DDR4")
 );
 
 DROP TABLE IF EXISTS cpu_prices;
@@ -64,7 +69,10 @@ CREATE TABLE vga_products (
     length_mm         SMALLINT UNSIGNED NULL,   -- add_compat_columns.sql
     recommended_psu_w SMALLINT UNSIGNED NULL,   -- add_compat_columns.sql
     power_connector   VARCHAR(50) NULL,         -- add_compat_columns.sql
-    tier_rank         INT NULL                  -- performance_tier.sql (기획서 6.1 성능 등급)
+    tier_rank         INT NULL,                 -- performance_tier.sql (기획서 6.1 성능 등급)
+    -- [신설]
+    output_ports      VARCHAR(100) NULL,        -- spec_key '출력단자' (예: "HDMI2.1, DP1.4")
+    power_draw_w      SMALLINT UNSIGNED NULL    -- spec_key '사용전력' (예: "최대 450W", "160W")
 );
 
 DROP TABLE IF EXISTS vga_prices;
@@ -87,7 +95,13 @@ CREATE TABLE mboard_products (
     ram_slot_count  TINYINT UNSIGNED NULL,
     socket          VARCHAR(30) NULL,           -- add_compat_columns.sql
     form_factor     VARCHAR(20) NULL,           -- add_compat_columns.sql
-    ram_type        VARCHAR(10) NULL            -- add_compat_columns.sql
+    ram_type        VARCHAR(10) NULL,           -- add_compat_columns.sql
+    -- [신설]
+    sata3_count     TINYINT UNSIGNED NULL,      -- spec_key 'SATA3' (예: "4개")
+    pcie_version    VARCHAR(10) NULL,           -- spec_key 'PCIe버전' (예: "PCIe3.0", 버전 없이 "PCIe"만 있는 경우도 있음)
+    pcie_x16_count  TINYINT UNSIGNED NULL,      -- spec_key 'PCIex16' (예: "1개")
+    m2_slot_count   TINYINT UNSIGNED NULL,      -- spec_key 'M.2' (예: "2개")
+    vga_connection  VARCHAR(30) NULL            -- spec_key 'VGA 연결' (예: "PCIe4.0 x16")
 );
 
 DROP TABLE IF EXISTS mboard_prices;
@@ -108,8 +122,12 @@ CREATE TABLE ram_products (
     company      VARCHAR(50),
     usage_type   VARCHAR(20),
     ram_type     VARCHAR(10) NULL,              -- add_compat_columns.sql
-    capacity_gb  SMALLINT UNSIGNED NULL,         -- ★ 저장소에 없어서 추가(용량 검색에 필수)
-    speed_mhz    SMALLINT UNSIGNED NULL          -- ★ 저장소에 없어서 추가
+    capacity_gb  SMALLINT UNSIGNED NULL,         -- ★ 저장소에 없어서 추가(용량 검색에 필수, 현재 미사용 — option_name으로 대체됨)
+    speed_mhz    SMALLINT UNSIGNED NULL,         -- ★ 저장소에 없어서 추가(현재 미사용 — 상품명에서 직접 파싱)
+    -- [신설]
+    stick_count       TINYINT UNSIGNED NULL,     -- spec_key '램개수' (예: "1개" — 킷이 아닌 단일 스틱 상품인지 확인용)
+    heatsink_height_mm SMALLINT UNSIGNED NULL    -- spec_key '높이' — core/algorithm.py가 매 쿼리마다 서브쿼리로
+                                                  -- 조회하던 걸 실제 컬럼으로 승격(danawa_spec_summary 조인 없이 바로 조회)
 );
 
 DROP TABLE IF EXISTS ram_prices;
@@ -196,7 +214,16 @@ CREATE TABLE power_products (
     company      VARCHAR(50),
     usage_type   VARCHAR(20),
     rated_w      SMALLINT UNSIGNED NULL,         -- add_compat_columns.sql
-    form_factor  VARCHAR(20) NULL                -- add_compat_columns.sql
+    form_factor  VARCHAR(20) NULL,               -- add_compat_columns.sql
+    -- [신설]
+    depth_mm            SMALLINT UNSIGNED NULL,  -- spec_key '깊이' (예: "140mm")
+    voltage_regulation  VARCHAR(20) NULL,        -- spec_key '전압변동' (예: "±0.5%")
+    eta_certification    VARCHAR(20) NULL,       -- spec_key 'ETA인증' (예: "BRONZE","SILVER") — 80PLUS와 별개의 인증 체계
+    lambda_certification VARCHAR(20) NULL,       -- spec_key 'LAMBDA인증' (예: "STANDARD","STANDARD+")
+    -- core/psu_rules.py의 has_atx3_support()는 지금 상품명 텍스트에서 "ATX 3.0"/
+    -- "12VHPWR" 문구를 정규식으로 추측하는데, 이 컬럼이 진짜 스펙 출처다 —
+    -- 나중에 알고리즘을 이 컬럼 기준으로 바꾸면 이름 텍스트 추측 없이 확정적으로 판정 가능.
+    pcie_16pin_connector VARCHAR(30) NULL        -- spec_key 'PCIe 16핀(12+4)' (예: "12VHPWR 1개","12V2x6 1개", 없으면 NULL)
 );
 
 DROP TABLE IF EXISTS power_prices;
@@ -228,7 +255,16 @@ CREATE TABLE case_products (
     radiator_top_mm          VARCHAR(50) NULL,
     radiator_side_mm         VARCHAR(50) NULL,
     radiator_rear_mm         VARCHAR(50) NULL,
-    radiator_front_mm        VARCHAR(50) NULL
+    radiator_front_mm        VARCHAR(50) NULL,
+    -- [신설] 외형 치수(케이스 자체 크기 — cooler_products.height_mm 등과는 무관한
+    -- 별개 의미라 이름 충돌 방지 목적으로 ext_ 접두사를 붙였다)
+    ext_width_mm      SMALLINT UNSIGNED NULL,   -- spec_key '너비(W)'
+    ext_depth_mm      SMALLINT UNSIGNED NULL,   -- spec_key '깊이(D)'
+    ext_height_mm     SMALLINT UNSIGNED NULL,   -- spec_key '높이(H)'
+    panel_type        VARCHAR(30) NULL,         -- spec_key '측면 패널 타입' (예: "강화유리","통풍구")
+    fan_count         TINYINT UNSIGNED NULL,    -- spec_key '쿨링팬' (예: "총4개")
+    psu_position      VARCHAR(20) NULL,         -- spec_key '파워 위치' (예: "상단","하단후면")
+    psu_max_length_mm SMALLINT UNSIGNED NULL    -- spec_key '파워 장착 길이' (예: "최대 215mm")
 );
 
 DROP TABLE IF EXISTS case_prices;
