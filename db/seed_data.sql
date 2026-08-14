@@ -33,20 +33,23 @@ INSERT INTO cpu_prices (product_id, crawl_date, option_name, price) VALUES
 -- tier_rank는 New_crawler/performance_tier.sql의 gpu_performance_tier 등급표
 -- (기획서 6.1, 1~14)에서 모델명으로 찾아 그대로 적었다.
 -- output_ports/power_draw_w: '출력단자'/'사용전력' 요약정보에서 추출한 항목.
-INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w, tier_rank, output_ports, power_draw_w) VALUES
-(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450, 2, 'HDMI2.1, DP1.4', 115),
-(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450, 3, 'HDMI2.1, DP1.4', 145),
-(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500, 4, 'HDMI2.1, DP1.4', 160),
-(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500, 5, 'HDMI2.1, DP1.4', 180),
-(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600, 6, 'HDMI2.1, DP1.4a', 200),
-(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650, 7, 'HDMI2.1, DP1.4a', 220),
-(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650, 8, 'HDMI2.1, DP1.4a', 250),
-(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700, 9, 'HDMI2.1, DP1.4a', 285),
-(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700, 10, 'HDMI2.1, DP1.4a', 300),
-(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750, 11, 'HDMI2.1, DP1.4a', 320),
-(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750, 12, 'HDMI2.1, DP1.4a', 360),
-(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850, 13, 'HDMI2.1, DP1.4a', 450),
-(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000, 14, 'HDMI2.1, DP1.4a', 575);
+-- power_connector: add_compat_columns.sql 때부터 있던 기존 컬럼인데 INSERT 목록에서
+-- 빠져 있어서 전부 NULL이었다(실사용자 발견: "프론트에 전원 포트가 안 보인다") —
+-- 실제 크롤링 덤프의 '전원 포트' 값 형식("8핀 x1", "16핀(12VHPWR) x1")을 그대로 채웠다.
+INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w, tier_rank, output_ports, power_draw_w, power_connector) VALUES
+(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450, 2, 'HDMI2.1, DP1.4', 115, '8핀 x1'),
+(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450, 3, 'HDMI2.1, DP1.4', 145, '8핀 x1'),
+(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500, 4, 'HDMI2.1, DP1.4', 160, '8핀 x1'),
+(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500, 5, 'HDMI2.1, DP1.4', 180, '8핀 x1'),
+(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600, 6, 'HDMI2.1, DP1.4a', 200, '16핀(12VHPWR) x1'),
+(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650, 7, 'HDMI2.1, DP1.4a', 220, '16핀(12VHPWR) x1'),
+(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650, 8, 'HDMI2.1, DP1.4a', 250, '16핀(12VHPWR) x1'),
+(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700, 9, 'HDMI2.1, DP1.4a', 285, '16핀(12VHPWR) x1'),
+(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700, 10, 'HDMI2.1, DP1.4a', 300, '16핀(12VHPWR) x1'),
+(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750, 11, 'HDMI2.1, DP1.4a', 320, '16핀(12VHPWR) x1'),
+(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750, 12, 'HDMI2.1, DP1.4a', 360, '16핀(12VHPWR) x1'),
+(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850, 13, 'HDMI2.1, DP1.4a', 450, '16핀(12VHPWR) x1'),
+(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000, 14, 'HDMI2.1, DP1.4a', 575, '16핀(12VHPWR) x1');
 
 INSERT INTO vga_prices (product_id, crawl_date, option_name, price) VALUES
 (2001, @today, '기본', 380000), (2002, @today, '기본', 420000), (2003, @today, '기본', 500000),
