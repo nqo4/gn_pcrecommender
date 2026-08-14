@@ -10,10 +10,13 @@ ALTER TABLE cooler_products
     ADD COLUMN tdp_rating_w SMALLINT UNSIGNED NULL;
 
 -- danawa_spec_summary에서 실제 TDP 값을 채운다(팀원 fill_missing_specs.sql과 동일 로직)
+-- [수정] REGEXP_REPLACE(spec_value, '[^0-9]', '')는 값에 숫자가 두 번 나오면
+--   ("65W~150W") 65150처럼 이어붙여 엉뚱한 값이 됐다 — 첫 번째 숫자 덩어리만
+--   뽑는 REGEXP_SUBSTR로 교체.
 UPDATE IGNORE cooler_products p
 JOIN (
     SELECT product_id,
-           MAX(CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)) AS w
+           MAX(CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)) AS w
     FROM danawa_spec_summary
     WHERE category = 'cooler'
       AND spec_key = 'TDP'

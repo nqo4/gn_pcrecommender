@@ -278,7 +278,7 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
             """
             SELECT p.product_id, p.name, pp.option_name, pp.price AS price_krw,
                    m.image_url, m.product_url,
-                   (SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)
+                   (SELECT CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)
                     FROM danawa_spec_summary
                     WHERE category = 'ram' AND product_id = p.product_id AND spec_key = '높이'
                     LIMIT 1) AS heatsink_height_mm
