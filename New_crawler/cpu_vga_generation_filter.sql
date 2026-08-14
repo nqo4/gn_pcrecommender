@@ -47,8 +47,8 @@ DELETE s FROM danawa_spec_summary s
 LEFT JOIN vga_products p ON s.category = 'vga' AND s.product_id = p.product_id
 WHERE s.category = 'vga' AND p.product_id IS NULL;
 
--- 가격 이력 테이블도 있다면 같이 정리 (테이블명이 다르면 이 두 줄은 에러 없이 무시하고 건너뛰어도 됨)
--- DELETE pp FROM cpu_prices pp LEFT JOIN cpu_products p ON pp.product_id = p.product_id WHERE p.product_id IS NULL;
--- DELETE pp FROM vga_prices pp LEFT JOIN vga_products p ON pp.product_id = p.product_id WHERE p.product_id IS NULL;
+-- 가격 이력 테이블도 정리(db/schema.sql 기준 cpu_prices/vga_prices 테이블명 확정됨)
+DELETE pp FROM cpu_prices pp LEFT JOIN cpu_products p ON pp.product_id = p.product_id WHERE p.product_id IS NULL;
+DELETE pp FROM vga_prices pp LEFT JOIN vga_products p ON pp.product_id = p.product_id WHERE p.product_id IS NULL;
 
 SELECT '완료. 이제 performance_tier.sql을 다시 실행하세요 (tier_rank 재계산 필요)' AS next_step;

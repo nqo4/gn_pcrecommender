@@ -7,6 +7,10 @@
 --
 -- IF NOT EXISTS를 써서 이미 있으면 건드리지 않고, cpu_products/vga_products/
 -- game_requirements 등 실제 데이터가 든 테이블은 아예 손대지 않습니다.
+--
+-- ※ 아래 INSERT의 등급값은 옛 0~8 스케일 초기값입니다 — 이 스크립트 실행 후
+--   반드시 update_usage_profiles_v2.sql을 이어서 실행해야 실제 tier_rank
+--   스케일(CPU 1~24/GPU 1~14)과 SSD/HDD 요구량으로 갱신됩니다.
 -- ============================================================
 USE DW_db;
 
