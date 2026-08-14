@@ -314,22 +314,26 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         rows = [r for r in rows if (r["tier_rank"] or 0) >= req.cpu_tier_min]
     elif stage == "gpu":
         # *** 수정(실사용자 제공 밸런스 가이드 1-①): CPU-GPU 체급이 1단계를
-        # 초과해서 벌어지면 안 됨. 4단계(entry/mainstream/high/flagship)로
-        # 나눠서, CPU 버킷 기준 상하 1단계 이내의 GPU만 후보로 남긴다 —
-        # "필요조건(req.gpu_tier_min)"과 "밸런스 상한"을 동시에 만족해야 한다.
-        # context에 cpu가 없으면(예: 예산 사전 체크용 단독 조회) 밸런스
-        # 필터는 건너뛰고 요구조건만 적용한다.
+        # 초과해서 벌어지면 안 됨. "필요조건(req.gpu_tier_min)"과 "밸런스
+        # 상한"을 동시에 만족해야 한다. context에 cpu가 없으면(예: 예산
+        # 사전 체크용 단독 조회) 밸런스 필터는 건너뛰고 요구조건만 적용한다.
+        #
+        # *** 수정(실사용자 발견: "가성비 모드가 병목 검증을 전혀 안 받는다 —
+        # i3+RTX4090처럼 극단적으로 불균형한 조합이 그대로 나온다") ***
+        # 예전엔 버킷 창(±1단계) 안에 후보가 하나도 없으면 그 필터를 그냥
+        # 무시하고 밸런스 안 맞는 후보까지 전부 되돌려줬다(성능 모드
+        # 다운그레이드에서만 쓰던 check_bottleneck()과는 별개의 느슨한
+        # 필터라서, 가성비 모드는 사실상 병목 검증이 없는 것과 같았다).
+        # 이제 check_bottleneck()을 진짜 하드 필터로 써서 병목인 후보는
+        # 아예 제외한다 — 남는 후보가 없으면(이 CPU로는 균형 잡힌 GPU가
+        # 카탈로그에 없음) 이 스테이지는 후보 소진으로 처리되고, search()의
+        # 기존 백트래킹이 자연스럽게 다음(더 비싼/체급 높은) CPU를 다시
+        # 시도한다 — 조용히 무시하는 대신 실제로 균형을 강제한다.
         rows = _fetch_all(conn, "vga_products_v", media_category="vga")
         rows = [r for r in rows if (r["tier_rank"] or 0) >= req.gpu_tier_min]
         cpu = context.get("cpu")
         if cpu:
-            cpu_bucket = cpu_tier_bucket(cpu.get("tier_rank"))
-            if cpu_bucket:
-                cpu_idx = BUCKET_ORDER.index(cpu_bucket)
-                allowed = set(BUCKET_ORDER[max(0, cpu_idx - 1): cpu_idx + 2])
-                balanced = [r for r in rows if gpu_tier_bucket(r["tier_rank"]) in allowed]
-                if balanced:
-                    rows = balanced
+            rows = [r for r in rows if not check_bottleneck(cpu, r)]
     elif stage == "ram":
         # *** 수정(실사용자 요청: 매칭 순서 변경 — RAM을 메인보드보다 먼저) ***
         # 메인보드가 RAM보다 먼저 정해지면, 가성비 모드에서 DDR4 전용 보급형
