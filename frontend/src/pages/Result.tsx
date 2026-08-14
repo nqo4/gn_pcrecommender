@@ -9,6 +9,64 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CATEGORY_ORDER = ["cpu", "mboard", "gpu", "ram", "ssd", "hdd", "psu", "cooler", "case"];
 
+// 오늘 DB에 새로 추가한 확장 스펙 컬럼(카테고리별)을 부품 카드에 보조 텍스트로 노출한다.
+// 값이 없는 카테고리(아직 스크래핑 안 된 상품 등)는 조용히 생략된다.
+function extraSpecLine(category: string, part: Part): string | null {
+  const items: string[] = [];
+  const num = (v: unknown) => typeof v === "number";
+
+  switch (category) {
+    case "cpu":
+      if (num(part.cinebench_single) && num(part.cinebench_multi)) {
+        items.push(`시네벤치 싱글 ${part.cinebench_single} · 멀티 ${part.cinebench_multi}`);
+      }
+      if (part.memory_support) items.push(`메모리 ${part.memory_support}`);
+      break;
+    case "gpu":
+      if (part.output_ports) items.push(`출력단자 ${part.output_ports}`);
+      if (num(part.power_draw_w)) items.push(`사용전력 ${part.power_draw_w}W`);
+      break;
+    case "mboard": {
+      // ram_type은 add_compat_columns.sql 때부터 있던 기존 컬럼인데 표시 목록에서
+      // 빠져 있었다(실사용자 발견: "메인보드에 DDR4/DDR5 여부가 안 보인다").
+      if (part.ram_type) items.push(String(part.ram_type));
+      const slots: string[] = [];
+      if (num(part.pcie_x16_count)) slots.push(`PCIe x16 ${part.pcie_x16_count}개`);
+      if (num(part.m2_slot_count)) slots.push(`M.2 ${part.m2_slot_count}개`);
+      if (num(part.sata3_count)) slots.push(`SATA3 ${part.sata3_count}개`);
+      if (slots.length) items.push(slots.join(" · "));
+      if (part.pcie_version) items.push(String(part.pcie_version));
+      break;
+    }
+    case "ram":
+      if (num(part.heatsink_height_mm)) items.push(`방열판 높이 ${part.heatsink_height_mm}mm`);
+      break;
+    case "psu": {
+      const certs: string[] = [];
+      if (part.eta_certification) certs.push(`ETA ${part.eta_certification}`);
+      if (part.lambda_certification) certs.push(`LAMBDA ${part.lambda_certification}`);
+      if (certs.length) items.push(certs.join(" · "));
+      if (part.pcie_16pin_connector) items.push(`${part.pcie_16pin_connector} 네이티브 지원`);
+      break;
+    }
+    case "cooler":
+      // support_sockets/tdp_rating_w는 add_compat_columns.sql·add_cooler_tdp_column.sql
+      // 때부터 있던 기존 컬럼(오늘 신설한 확장 컬럼이 아님) — 표시 목록에서 빠져 있었다
+      // (실사용자 발견: "쿨러 카드에 소켓/TDP가 안 보인다").
+      if (part.support_sockets) items.push(`지원 소켓 ${part.support_sockets}`);
+      if (num(part.tdp_rating_w)) items.push(`TDP ${part.tdp_rating_w}W`);
+      break;
+    case "case":
+      if (num(part.ext_width_mm) && num(part.ext_depth_mm) && num(part.ext_height_mm)) {
+        items.push(`외형 ${part.ext_width_mm}×${part.ext_depth_mm}×${part.ext_height_mm}mm`);
+      }
+      if (part.panel_type) items.push(String(part.panel_type));
+      if (num(part.fan_count)) items.push(`쿨링팬 ${part.fan_count}개`);
+      break;
+  }
+  return items.length ? items.join(" · ") : null;
+}
+
 export interface Selection {
   budgetKrw: number;
   gameTitles: string[];
@@ -165,6 +223,7 @@ export default function Result() {
           {CATEGORY_ORDER.filter((k) => parts[k]).map((key) => {
             const part = parts[key];
             const qty = part.quantity ?? 1;
+            const extra = extraSpecLine(key, part);
             return (
               <li key={key} className="part-item part-item-with-thumb">
                 <PartThumbnail part={part} onEnlarge={(url, name) => setLightbox({ url, name })} />
@@ -173,6 +232,7 @@ export default function Result() {
                   {qty > 1 && part.unit_price_krw != null && (
                     <span className="part-unit-price"> (개당 {part.unit_price_krw.toLocaleString()}원 × {qty}개)</span>
                   )}
+                  {extra && <span className="part-extra-specs">{extra}</span>}
                 </span>
                 <span className="part-price">{part.price_krw.toLocaleString()}원</span>
               </li>
