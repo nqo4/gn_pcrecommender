@@ -42,6 +42,8 @@ function extraSpecLine(category: string, part: Part): string | null {
       break;
     }
     case "ram":
+      // ram_type도 add_compat_columns.sql 때부터 있던 기존 컬럼인데 표시 목록에서 빠져 있었다.
+      if (part.ram_type) items.push(String(part.ram_type));
       if (num(part.heatsink_height_mm)) items.push(`방열판 높이 ${part.heatsink_height_mm}mm`);
       break;
     case "psu": {
