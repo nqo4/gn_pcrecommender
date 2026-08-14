@@ -1087,7 +1087,19 @@ def build_performance(
             except StopIteration:
                 cur_pos = 0
 
+            # *** 수정(실사용자 발견: "CPU/GPU까지 최소 옵션으로 내렸는데도 예산을
+            # 맞추지 못했다"는 메시지가, 실제로는 어느 부품도 낮아지지 않은 채 뜬다) ***
+            # 예전엔 "이 스테이지 하나만 낮춰서 예산 안에 들어오는가"만 봐서, 한
+            # 스테이지의 가격차만으로는 예산을 못 맞추는 게 보통인 상황(거의 항상)에
+            # 그 스테이지를 최고 사양 그대로 두고 다음 스테이지로 넘어갔다 — 절감액이
+            # 스테이지 사이에 전혀 누적되지 않아, 뒤쪽 GPU/CPU 차례가 와도 다른 부품이
+            # 죄다 최고 사양이라 여전히 예산을 못 맞추고 실패했다(가성비 모드로는
+            # 분명히 예산 안에 드는 조합이 있는데도). 이제 이 스테이지에서 예산 안에
+            # 드는 후보가 하나도 없으면, 그 스테이지의 최저가 후보라도 채택해서
+            # 절감분이 다음 스테이지로 누적되게 한다 — 모든 스테이지를 다 훑어도
+            # 안 되면 그때 진짜로 "최소 옵션까지 내렸는데도 부족"이 맞다.
             review_retries = 0
+            cheapest_pos = None
             for next_pos in range(cur_pos + 1, len(candidates)):
                 trial = dict(current)
                 trial[stage] = candidates[next_pos]
@@ -1097,6 +1109,8 @@ def build_performance(
                 bottleneck = "gpu" in trial and check_bottleneck(trial["cpu"], trial["gpu"])
                 if bottleneck:
                     continue  # ③ 병목 발생 -> 이 후보는 건너뛰고 다음 후보 시도
+
+                cheapest_pos = next_pos  # 병목 없는 후보 중 가장 마지막(=가장 저렴)
 
                 if total <= parts_budget:
                     # *** 수정(실사용자 발견: "성능 모드에서 PSU 전력량 부족,
@@ -1127,8 +1141,16 @@ def build_performance(
                     break  # 이 스테이지에서는 예산 안에 들어왔으니 다음 스테이지로
                 # ① 계속 예산 부족 -> 이 스테이지에서 더 낮출 후보가 있으면 계속 시도
             else:
-                # ② 더 이상 대안 없음 -> 다음 순서의 부품 다운그레이드로 넘어감(그대로 유지)
-                pass
+                # ② 이 스테이지 혼자서는 예산을 못 맞췄다 — 병목 없는 후보 중
+                # 가장 저렴한 걸로라도 낮춰서 절감분을 다음 스테이지로 넘긴다.
+                if cheapest_pos is not None:
+                    current = dict(current)
+                    current[stage] = candidates[cheapest_pos]
+                    candidate_cache.pop("mboard", None)
+                    candidate_cache.pop("ram", None)
+                    candidate_cache.pop("cooler", None)
+                    candidate_cache.pop("psu", None)
+                    candidate_cache.pop("case", None)
 
             if stage in ("cpu", "gpu") and best_within_budget is None:
                 cpu_gpu_floor_reached = True
