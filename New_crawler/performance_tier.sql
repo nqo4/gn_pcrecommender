@@ -32,7 +32,9 @@ INSERT INTO cpu_performance_tier (tier_rank, lineup, keyword, source, note) VALU
 (6,  'i5', '235',   'EXTRAPOLATED', '울트라5 시리즈2 235(+T)'),
 (7,  'i5', '245',   'EXTRAPOLATED', '울트라5 시리즈2 245 (비K)'),
 (8,  'i5', '245K',  'DOC', '기획서 6.2 명시: 13500/14500 위, 13600K/14600K 아래'),
-(9,  'i5', '250K Plus', 'EXTRAPOLATED', '울트라5 250K/KF Plus - 245K보다 상위 추정(모델번호+Plus리프레시)'),
+-- [수정] 키워드가 '250K Plus'였으나 실제 상품명은 F 유무에 따라 "250K Plus"/"250KF Plus"로 갈려서
+--        중간에 'F'가 끼는 KF 버전은 부분 문자열이 안 맞아 매칭 실패했음(공백 없는 '250K'로 완화해 둘 다 매칭).
+(9,  'i5', '250K', 'EXTRAPOLATED', '울트라5 250K/KF Plus - 245K보다 상위 추정(모델번호+Plus리프레시)'),
 (10, 'i5', '13600K', 'DOC', '기획서 6.2 i5 계열'),
 (10, 'i5', '14600K', 'DOC', '기획서 6.2 i5 계열 (13600K와 동급)'),
 (11, 'i7', '13700',  'DOC', '기획서 6.2 i7 계열'),
