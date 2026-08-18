@@ -185,6 +185,71 @@ def review_partial(conn, parts: dict, latest_stage: str) -> dict | None:
         return None
 
 
+_FINAL_REVIEW_PROMPT_TEMPLATE = """당신은 PC 견적 검수 전문가입니다. 아래 완성된 견적 전체를 한 번에 검토해서
+JSON으로만 답변하세요(다른 설명 없이 JSON만).
+
+[완성된 견적]
+{parts_summary}
+
+[검수 항목 — 부품 카테고리별로 확인하세요]
+- CPU-GPU: 성능 체급이 심하게 어긋나지 않는지(병목)
+- 메인보드: CPU 소켓 호환, CPU/GPU 체급에 맞는 전원부(VRM) 등급인지
+- RAM: 메인보드 규격(DDR4/DDR5)과 일치하는지
+- 쿨러: CPU 발열을 감당할 수 있는지(특히 고성능 CPU에 공랭이 붙어
+  서멀 스로틀링 위험이 있는지)
+- PSU: 80PLUS 인증이 있는지, 이 GPU가 12VHPWR(16핀)을 요구하는 고전력
+  모델이면 PSU가 ATX 3.0/3.1 규격인지(구형 규격+젠더는 화재 위험)
+- 케이스: 통풍/공간이 충분한지(전면이 막힌 초저가형 등)
+
+가격이 싸다는 것 자체는 문제가 아닙니다 — 실제 호환/발열/안전 문제가
+있는 부품이 있을 때만 issue를 true로 답하세요. 문제 부품이 있다면
+어느 카테고리인지 category에 적으세요(cpu/gpu/mboard/ram/cooler/psu/case
+중 하나), 그리고 같은 카테고리 안에서 실제로 존재할 법한 구체적인
+대체 모델명을 suggested_model에 적으세요(모르면 빈 문자열).
+
+반드시 이 형식의 JSON만 출력하세요:
+{{"issue": true 또는 false, "category": "", "reason": "", "suggested_model": ""}}
+"""
+
+
+def review_final(conn, parts: dict) -> dict | None:
+    """*** 신설(실사용자 요청: "단계별 검수 대신 최종 한 번만 검수해서 안정성
+    테스트") *** 완성된 견적 하나를 딱 한 번만 검수한다 — review_partial과
+    달리 특정 스테이지에 초점을 맞추지 않고 전체 카테고리를 한 번에
+    훑는다. 반환: {"issue": bool, "category": str, "reason": str,
+    "suggested_model": str} 또는 (API 키 없음/실패 시) None."""
+    if not GEMINI_API_KEY:
+        print("[gemini_review] (final) GEMINI_API_KEY가 없어 검수를 건너뜁니다.")
+        return None
+
+    prompt = _FINAL_REVIEW_PROMPT_TEMPLATE.format(parts_summary=_build_parts_summary(conn, parts))
+    try:
+        resp = requests.post(
+            GEMINI_URL,
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        parsed = json.loads(text)
+        result = {
+            "issue": bool(parsed.get("issue", False)),
+            "category": str(parsed.get("category", "")),
+            "reason": str(parsed.get("reason", "")),
+            "suggested_model": str(parsed.get("suggested_model", "")),
+        }
+        print(f"[gemini_review] (final) 검수 완료 — issue={result['issue']}, category={result['category']}, reason='{result['reason']}'")
+        return result
+    except Exception as e:
+        print(f"[gemini_review] (final) 검수 호출 실패, 건너뜀: {e}")
+        return None
+
+
 def find_best_match(candidates: list[dict], suggested_model: str, exclude_id: int) -> dict | None:
     """Gemini가 제안한 모델명(suggested_model)과 가장 가깝게 일치하는 상품을
     후보 목록에서 찾는다. 토큰(공백 기준) 일치 개수로 점수를 매기고, 정확히

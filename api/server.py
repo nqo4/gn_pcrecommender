@@ -83,11 +83,36 @@ def parse_requirements_and_options(body: dict) -> tuple[Requirements, Options, i
                     # 1TB"라는 대충 정한 규칙을 따로 썼었다). ***
                     "required_ssd_gb": r.get("storage_gb") or 500,
                     "required_hdd_gb": 0,
+                    # *** 신설(실사용자 요청): 게임은 항상 외장 GPU가 필요하다
+                    # (문서작업 용도만 내장그래픽으로 GPU를 생략할 수 있다). ***
+                    "requires_dgpu": True,
                 })
+        # *** 수정(실사용자 최종 결정: 방송/3D렌더링/개발 용도의 가성비·성능
+        # 모드별 GPU/CPU/SSD 요구사항 분리) *** mode를 usage_profiles 조회
+        # 전에 먼저 알아내서, 성능 모드면 *_perf 컬럼이 있는 것만 그 값으로
+        # 덮어쓴다(값이 없으면 기존 required_* 그대로 사용 — OFFICE/영상편집
+        # 등 아직 모드별 분리를 안 한 용도는 영향 없음).
+        mode = body.get("mode", "cost")
         if usage_profile_ids:
             placeholders = ", ".join(["%s"] * len(usage_profile_ids))
             cursor.execute(f"SELECT * FROM usage_profiles WHERE id IN ({placeholders})", tuple(usage_profile_ids))
-            rows.extend(cursor.fetchall())
+            for r in cursor.fetchall():
+                if mode == "perf":
+                    if r.get("required_gpu_tier_perf") is not None:
+                        r["required_gpu_tier"] = r["required_gpu_tier_perf"]
+                    if r.get("required_cpu_tier_perf") is not None:
+                        r["required_cpu_tier"] = r["required_cpu_tier_perf"]
+                    if r.get("required_ssd_gb_perf") is not None:
+                        r["required_ssd_gb"] = r["required_ssd_gb_perf"]
+                    # *** 매칭 로직 사전 준비(실사용자 요청: "3D렌더링 CPU
+                    # 코어/스레드 조건") *** 컬럼이 아직 없거나 NULL이면
+                    # r.get()이 그냥 None을 반환하니 안전하다 — merge_requirements가
+                    # None을 0(제한 없음)으로 처리한다.
+                    if r.get("required_cpu_cores_perf") is not None:
+                        r["required_cpu_cores"] = r["required_cpu_cores_perf"]
+                    if r.get("required_cpu_threads_perf") is not None:
+                        r["required_cpu_threads"] = r["required_cpu_threads_perf"]
+                rows.append(r)
         if not rows:
             raise ValueError("선택하신 게임/PC 용도를 찾을 수 없습니다")
 
@@ -97,7 +122,6 @@ def parse_requirements_and_options(body: dict) -> tuple[Requirements, Options, i
             rgb=body.get("rgb", "상관없음"),
         )
         budget = int(body["budget_krw"])
-        mode = body.get("mode", "cost")  # "cost" | "perf"
         return req, opt, budget, mode
     finally:
         cursor.close()
@@ -141,14 +165,16 @@ def create_build():
     # 쓴다. 프론트엔드가 명시적으로 ssd_gb_min을 보내면 그 값을 우선한다.
     ssd_gb_min = body.get("ssd_gb_min", req.ssd_gb_min)
     hdd_gb_min = body.get("hdd_gb_min", req.hdd_gb_min)
-    # *** 수정(실사용자 발견: "게임만 선택했더니 SSD 128GB짜리가 매칭됨") ***
+    # *** 수정(실사용자 최종 결정: "게임: SSD 가성비 1TB, 성능 2TB") ***
     # 가벼운 게임(롤/발로란트 등)은 game_requirements.storage_gb 자체가
     # 작게 들어있어서, 그 값을 그대로 쓰면 지금 시대에 안 맞는 너무 작은
-    # SSD가 골라진다 — 게임을 하나라도 선택했으면 실사용을 감안해 최소
-    # 1TB(SSD)+1TB(HDD)는 보장한다(더 큰 요구치가 이미 있으면 그대로 유지 —
-    # max()라 3D렌더링처럼 이미 2TB/4TB인 경우는 안 줄어든다).
+    # SSD가 골라진다 — 게임을 하나라도 선택했으면 모드별 하한선을 보장한다
+    # (더 큰 요구치가 이미 있으면 그대로 유지 — max()라 3D렌더링처럼 이미
+    # 2TB/4TB인 경우는 안 줄어든다). HDD는 모드 구분 없이 1TB로 유지한다
+    # (가이드에 성능모드 HDD 별도 기준이 없었음).
     if body.get("game_ids"):
-        ssd_gb_min = max(ssd_gb_min, 1000)
+        ssd_floor = 2000 if mode == "perf" else 1000
+        ssd_gb_min = max(ssd_gb_min, ssd_floor)
         hdd_gb_min = max(hdd_gb_min, 1000)
     # *** 수정(실사용자 발견: "성능 견적 최초 금액이 이미 예산을 초과") ***
     # 예전엔 여기서 결과가 나온 "다음에" select_storage()로 저장장치를 따로
@@ -166,6 +192,7 @@ def create_build():
         "cpu_tier_min": req.cpu_tier_min, "gpu_tier_min": req.gpu_tier_min,
         "ram_gb_min": req.ram_gb_min,
         "ssd_gb_min": req.ssd_gb_min, "hdd_gb_min": req.hdd_gb_min,
+        "requires_dgpu": req.requires_dgpu,
     }
     response["_options"] = {"placement": opt.placement, "rgb": opt.rgb}
     return jsonify(response)
@@ -176,6 +203,7 @@ def _rebuild_req_opt(body: dict) -> tuple[Requirements, Options]:
     req = Requirements(
         cpu_tier_min=r["cpu_tier_min"], gpu_tier_min=r["gpu_tier_min"], ram_gb_min=r["ram_gb_min"],
         ssd_gb_min=r.get("ssd_gb_min", 500), hdd_gb_min=r.get("hdd_gb_min", 0),
+        requires_dgpu=r.get("requires_dgpu", True),
     )
     opt = Options(placement=o["placement"], rgb=o["rgb"])
     return req, opt

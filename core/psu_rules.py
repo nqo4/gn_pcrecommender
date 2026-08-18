@@ -19,9 +19,11 @@ _80PLUS_TIER_RE = re.compile(
     re.IGNORECASE,
 )
 
-# GPU tier_rank >= 9(RTX 4070Ti/5070Ti/4080/5080/4090/5090급)부터 12VHPWR
+# GPU tier_rank >= 22(RTX 4070Ti/5070Ti/4080/5080/4090/5090급)부터 12VHPWR
 # 네이티브 PSU를 강제한다 — 가이드의 "고성능 GPU" 목록과 정확히 일치.
-HIGH_POWER_GPU_TIER_THRESHOLD = 9
+# *** 수정(실사용자 요청: "확장 등급표" 07_tier_rank_expanded.sql 적용으로
+# GPU tier_rank가 1~14에서 1~30 스케일로 바뀌면서 임계값도 같이 이동) ***
+HIGH_POWER_GPU_TIER_THRESHOLD = 22
 
 
 def has_atx3_support(name: str) -> bool:
@@ -35,3 +37,25 @@ def extract_80plus_tier(name: str) -> str | None:
     못 찾으면 None(무인증 또는 표기 불명)."""
     m = _80PLUS_TIER_RE.search(name or "")
     return m.group(1).upper() if m else None
+
+
+# *** 신설(실사용자 최종 결정: 가성비=Bronze~Silver, 성능=Gold 이상) ***
+# 등급 서열을 숫자로 매겨서 "이 등급 이상"을 쉽게 비교할 수 있게 한다.
+_TIER_RANK = {
+    "STANDARD": 0, "스탠다드": 0,
+    "BRONZE": 1, "브론즈": 1,
+    "SILVER": 2, "실버": 2,
+    "GOLD": 3, "골드": 3,
+    "PLATINUM": 4, "플래티넘": 4,
+    "TITANIUM": 5, "티타늄": 5,
+}
+
+
+def meets_80plus_minimum(name: str, min_tier: str) -> bool:
+    """이 PSU의 80PLUS 등급이 min_tier(예: "GOLD") 이상인지 확인한다.
+    등급 표기가 아예 없으면(무인증) False — 최소 등급 요구가 있는 상황에서
+    무인증 제품을 통과시키면 안 되기 때문이다."""
+    tier = extract_80plus_tier(name)
+    if tier is None:
+        return False
+    return _TIER_RANK.get(tier, -1) >= _TIER_RANK.get(min_tier.upper(), 0)
