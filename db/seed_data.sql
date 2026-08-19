@@ -211,13 +211,15 @@ INSERT INTO game_requirements (id, game_name, cpu_tier_rank, cpu_display, gpu_ti
 (9,  '블랙 미쓰: 오공',  18, 'i9-13900',      12, 'RTX 5080',       32, 130, NULL, '2026-08-14'),
 (10, '알란 웨이크 2',    18, 'i9-13900',      12, 'RTX 5080',       16, 90,  NULL, '2026-08-14');
 
--- 등급/저장장치 값은 update_usage_profiles_v2.sql("PC 용도별 견적 가이드")과 동일.
+-- 등급/저장장치 값은 New_crawler/update_usage_profiles_v3.sql("PC 용도별 부품 매칭
+-- 로직" 문서, 실사용자 제공)과 동일 — cpu_performance_tier/gpu_performance_tier의
+-- tier_rank로 환산한 근거는 그 스크립트 상단 주석 참고.
 INSERT INTO usage_profiles (id, code, display_name, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type, required_ssd_gb, required_hdd_gb) VALUES
-(1, 'OFFICE', '문서작업/인터넷', 3, 1, 16, NULL, 512, 0),
-(2, 'VIDEO_EDITING', '영상편집', 9, 5, 32, 'DDR5', 1000, 2000),
-(3, 'RENDERING_3D', '3D 렌더링/모델링', 12, 10, 64, 'DDR5', 2000, 4000),
-(4, 'STREAMING', '방송/스트리밍', 9, 5, 32, NULL, 1000, 0),
-(5, 'DEVELOPMENT', '개발/컴파일', 9, 1, 32, NULL, 1000, 0);
+(1, 'OFFICE', '문서작업/인터넷', 1, 1, 16, NULL, 512, 0),
+(2, 'VIDEO_EDITING', '영상편집', 11, 5, 32, 'DDR5', 1000, 2000),
+(3, 'RENDERING_3D', '3D 렌더링/모델링', 3, 3, 64, 'DDR5', 1000, 4000),
+(4, 'STREAMING', '방송/스트리밍', 9, 2, 32, NULL, 1000, 0),
+(5, 'DEVELOPMENT', '개발/컴파일', 5, 1, 32, NULL, 1000, 0);
 
 -- ============================================================
 -- 부품 사진/링크 목업 (실제 product_media 연결 전까지의 플레이스홀더)
