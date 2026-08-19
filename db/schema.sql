@@ -72,7 +72,8 @@ CREATE TABLE vga_products (
     tier_rank         INT NULL,                 -- performance_tier.sql (기획서 6.1 성능 등급)
     -- [신설]
     output_ports      VARCHAR(100) NULL,        -- spec_key '출력단자' (예: "HDMI2.1, DP1.4")
-    power_draw_w      SMALLINT UNSIGNED NULL    -- spec_key '사용전력' (예: "최대 450W", "160W")
+    power_draw_w      SMALLINT UNSIGNED NULL,   -- spec_key '사용전력' (예: "최대 450W", "160W")
+    vram_gb           TINYINT UNSIGNED NULL     -- 부품매칭가이드 3절(3D렌더링 VRAM 요구치) — 상품명("...D6X 12GB")에서 추출
 );
 
 DROP TABLE IF EXISTS vga_prices;
@@ -101,7 +102,10 @@ CREATE TABLE mboard_products (
     pcie_version    VARCHAR(10) NULL,           -- spec_key 'PCIe버전' (예: "PCIe3.0", 버전 없이 "PCIe"만 있는 경우도 있음)
     pcie_x16_count  TINYINT UNSIGNED NULL,      -- spec_key 'PCIex16' (예: "1개")
     m2_slot_count   TINYINT UNSIGNED NULL,      -- spec_key 'M.2' (예: "2개")
-    vga_connection  VARCHAR(30) NULL            -- spec_key 'VGA 연결' (예: "PCIe4.0 x16")
+    vga_connection  VARCHAR(30) NULL,           -- spec_key 'VGA 연결' (예: "PCIe4.0 x16")
+    -- 부품매칭가이드 2/7절(RAM-메인보드 속도 매칭, M.2 PCIe버전 매칭)
+    max_memory_speed_mhz SMALLINT UNSIGNED NULL, -- '[메모리]' 섹션 다음 줄(예: "6400MHz (PC5-51200)")
+    m2_max_pcie_version  DECIMAL(2,1) NULL       -- spec_key 'M.2 연결'에서 가장 높은 PCIe 버전
 );
 
 DROP TABLE IF EXISTS mboard_prices;
@@ -148,7 +152,11 @@ CREATE TABLE ssd_products (
     company      VARCHAR(50),
     usage_type   VARCHAR(20),
     capacity_gb  SMALLINT UNSIGNED NULL,         -- ★ 저장소에 없어서 추가
-    interface    VARCHAR(30) NULL                -- ★ 저장소에 없어서 추가
+    interface    VARCHAR(30) NULL,               -- ★ 저장소에 없어서 추가
+    -- 부품매칭가이드 7/8절(M.2 폼팩터/인터페이스, SATA 매칭)
+    m2_form_factor     VARCHAR(10) NULL,         -- spec_order=0 (예: "2280", 2.5인치 SATA면 "2.5")
+    is_sata_interface  TINYINT(1) NULL,          -- spec_order=1이 "SATA..."로 시작하면 1, PCIe면 0
+    pcie_version       DECIMAL(2,1) NULL         -- is_sata_interface=0일 때만 값 있음(예: 4.0)
 );
 
 DROP TABLE IF EXISTS ssd_prices;
@@ -223,7 +231,9 @@ CREATE TABLE power_products (
     -- core/psu_rules.py의 has_atx3_support()는 지금 상품명 텍스트에서 "ATX 3.0"/
     -- "12VHPWR" 문구를 정규식으로 추측하는데, 이 컬럼이 진짜 스펙 출처다 —
     -- 나중에 알고리즘을 이 컬럼 기준으로 바꾸면 이름 텍스트 추측 없이 확정적으로 판정 가능.
-    pcie_16pin_connector VARCHAR(30) NULL        -- spec_key 'PCIe 16핀(12+4)' (예: "12VHPWR 1개","12V2x6 1개", 없으면 NULL)
+    pcie_16pin_connector VARCHAR(30) NULL,       -- spec_key 'PCIe 16핀(12+4)' (예: "12VHPWR 1개","12V2x6 1개", 없으면 NULL)
+    -- 부품매칭가이드 8절(SATA 매칭 — PSU 커넥터 개수)
+    sata_connector_count TINYINT UNSIGNED NULL   -- spec_key 'SATA' (예: "6개")
 );
 
 DROP TABLE IF EXISTS power_prices;
@@ -322,7 +332,8 @@ CREATE TABLE usage_profiles (
     required_ram_gb     SMALLINT,
     required_ram_type   VARCHAR(10) NULL,
     required_ssd_gb     SMALLINT UNSIGNED NULL,
-    required_hdd_gb     SMALLINT UNSIGNED NULL DEFAULT 0
+    required_hdd_gb     SMALLINT UNSIGNED NULL DEFAULT 0,
+    required_vram_gb    TINYINT UNSIGNED NULL   -- 부품매칭가이드 3절(3D렌더링 GPU VRAM 최소치)
 );
 
 -- ============================================================

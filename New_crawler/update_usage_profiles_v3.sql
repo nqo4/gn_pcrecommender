@@ -17,8 +17,10 @@
 --   영상편집   CPU "i5-K/Ultra5급 이상" -> i5-13600K/14600K = tier27
 --              GPU "RTX 5060Ti급 이상" -> tier15
 --   3D렌더링   CPU (가성비 최저) "6코어12스레드급, 예 i5-14400" -> tier19
---              GPU (가성비 최저) "RTX5060 12GB" -> tier12 (VRAM 16GB 조건은
---              vga_products에 VRAM 컬럼이 없어 반영 불가 — 스키마 확장 필요, 범위 밖)
+--              GPU (가성비 최저) "RTX5060 12GB" -> tier12, VRAM 16GB 이상 필수
+--              (add_matching_guide_columns.sql/fill_matching_guide_specs.sql로
+--              vga_products.vram_gb 컬럼 및 데이터 확보 완료 — core/algorithm.py의
+--              GPU 스테이지가 이 값을 하드 필터로 씀)
 --              SSD 가성비 최저 1TB(요구사양 required_ssd_gb는 두 모드 공통 floor로 씀)
 --   방송/스트리밍  GPU (가성비 최저) "RTX4060/5060" 중 최저 -> RTX4060 = tier10
 --              CPU 항목 원문이 "RTX 4070Ti급 이상"으로 GPU 모델명이 적혀있어 오탈자로
@@ -29,9 +31,11 @@
 -- 이 문서가 명시한 게임 저장장치 규칙(가성비1TB/성능2TB, HDD1TB)은 이미
 -- api/server.py의 게임 선택 시 최소 1TB 보정과 일치해서 별도 변경 없음.
 --
--- 범위 밖(core/algorithm.py 변경 필요, 이번엔 안 건드림): GPU VRAM 최소치,
--- M.2/SATA 슬롯 규칙. (PSU 1.3배 마진+80PLUS, 쿨러 TDP*MTP*1.3 공식,
--- RAM-메인보드 속도 매칭은 main에 이미 구현돼 있음 — core/algorithm.py 참고.)
+-- *** 갱신: GPU VRAM 최소치, RAM-메인보드 속도 매칭, M.2 PCIe버전/SATA
+-- 커넥터 매칭, 케이스-라디에이터 매칭도 이제 core/algorithm.py에 반영됨
+-- (add_matching_guide_columns.sql/fill_matching_guide_specs.sql 실행 필요).
+-- 여전히 반영 안 된 항목: 케이스 드라이브 베이 개수(카테고리에 크롤링
+-- 데이터 자체가 없어서 New_crawler 쪽 크롤링 보강이 먼저 필요함).
 --
 -- ※ 이 저장소의 mock DB(db/seed_data.sql, DW_db_mock)는 자체 데이터가
 -- 아직 옛 스케일(CPU 1~25/GPU 1~14)이라 이 파일과 별개다 — 그쪽은 내부적으로
@@ -42,7 +46,7 @@ USE dw_db;
 
 UPDATE usage_profiles SET required_cpu_tier = 17, required_gpu_tier = 9,  required_ram_gb = 16, required_ram_type = NULL,   required_ssd_gb = 512,  required_hdd_gb = 0    WHERE id = 1;
 UPDATE usage_profiles SET required_cpu_tier = 27, required_gpu_tier = 15, required_ram_gb = 32, required_ram_type = 'DDR5', required_ssd_gb = 1000, required_hdd_gb = 2000 WHERE id = 2;
-UPDATE usage_profiles SET required_cpu_tier = 19, required_gpu_tier = 12, required_ram_gb = 64, required_ram_type = 'DDR5', required_ssd_gb = 1000, required_hdd_gb = 4000 WHERE id = 3;
+UPDATE usage_profiles SET required_cpu_tier = 19, required_gpu_tier = 12, required_ram_gb = 64, required_ram_type = 'DDR5', required_ssd_gb = 1000, required_hdd_gb = 4000, required_vram_gb = 16 WHERE id = 3;
 UPDATE usage_profiles SET required_cpu_tier = 25, required_gpu_tier = 10, required_ram_gb = 32, required_ram_type = NULL,   required_ssd_gb = 1000, required_hdd_gb = 0    WHERE id = 4;
 UPDATE usage_profiles SET required_cpu_tier = 21, required_gpu_tier = 9,  required_ram_gb = 32, required_ram_type = NULL,   required_ssd_gb = 1000, required_hdd_gb = 0    WHERE id = 5;
 

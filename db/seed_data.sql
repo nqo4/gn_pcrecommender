@@ -36,20 +36,20 @@ INSERT INTO cpu_prices (product_id, crawl_date, option_name, price) VALUES
 -- power_connector: add_compat_columns.sql 때부터 있던 기존 컬럼인데 INSERT 목록에서
 -- 빠져 있어서 전부 NULL이었다(실사용자 발견: "프론트에 전원 포트가 안 보인다") —
 -- 실제 크롤링 덤프의 '전원 포트' 값 형식("8핀 x1", "16핀(12VHPWR) x1")을 그대로 채웠다.
-INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w, tier_rank, output_ports, power_draw_w, power_connector) VALUES
-(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450, 2, 'HDMI2.1, DP1.4', 115, '8핀 x1'),
-(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450, 3, 'HDMI2.1, DP1.4', 145, '8핀 x1'),
-(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500, 4, 'HDMI2.1, DP1.4', 160, '8핀 x1'),
-(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500, 5, 'HDMI2.1, DP1.4', 180, '8핀 x1'),
-(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600, 6, 'HDMI2.1, DP1.4a', 200, '16핀(12VHPWR) x1'),
-(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650, 7, 'HDMI2.1, DP1.4a', 220, '16핀(12VHPWR) x1'),
-(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650, 8, 'HDMI2.1, DP1.4a', 250, '16핀(12VHPWR) x1'),
-(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700, 9, 'HDMI2.1, DP1.4a', 285, '16핀(12VHPWR) x1'),
-(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700, 10, 'HDMI2.1, DP1.4a', 300, '16핀(12VHPWR) x1'),
-(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750, 11, 'HDMI2.1, DP1.4a', 320, '16핀(12VHPWR) x1'),
-(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750, 12, 'HDMI2.1, DP1.4a', 360, '16핀(12VHPWR) x1'),
-(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850, 13, 'HDMI2.1, DP1.4a', 450, '16핀(12VHPWR) x1'),
-(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000, 14, 'HDMI2.1, DP1.4a', 575, '16핀(12VHPWR) x1');
+INSERT INTO vga_products (product_id, name, company, usage_type, length_mm, recommended_psu_w, tier_rank, output_ports, power_draw_w, power_connector, vram_gb) VALUES
+(2001, 'GIGABYTE 지포스 RTX 4060 D6 8GB', 'GIGABYTE', 'gaming', 200, 450, 2, 'HDMI2.1, DP1.4', 115, '8핀 x1', 8),
+(2002, 'GIGABYTE 지포스 RTX 5060 D8 8GB', 'GIGABYTE', 'gaming', 210, 450, 3, 'HDMI2.1, DP1.4', 145, '8핀 x1', 8),
+(2003, 'GIGABYTE 지포스 RTX 4060 Ti D6 8GB', 'GIGABYTE', 'gaming', 240, 500, 4, 'HDMI2.1, DP1.4', 160, '8핀 x1', 8),
+(2004, 'MSI 지포스 RTX 5060 Ti D8 16GB', 'MSI', 'gaming', 250, 500, 5, 'HDMI2.1, DP1.4', 180, '8핀 x1', 16),
+(2005, 'MSI 지포스 RTX 4070 D6X 12GB', 'MSI', 'gaming', 280, 600, 6, 'HDMI2.1, DP1.4a', 200, '16핀(12VHPWR) x1', 12),
+(2006, 'GIGABYTE 지포스 RTX 4070 SUPER D6X 12GB', 'GIGABYTE', 'gaming', 290, 650, 7, 'HDMI2.1, DP1.4a', 220, '16핀(12VHPWR) x1', 12),
+(2007, 'ASUS 지포스 RTX 5070 D7 12GB', 'ASUS', 'gaming', 300, 650, 8, 'HDMI2.1, DP1.4a', 250, '16핀(12VHPWR) x1', 12),
+(2008, 'MSI 지포스 RTX 4070 Ti D6X 12GB', 'MSI', 'gaming', 300, 700, 9, 'HDMI2.1, DP1.4a', 285, '16핀(12VHPWR) x1', 12),
+(2009, 'GIGABYTE 지포스 RTX 5070 Ti D7 16GB', 'GIGABYTE', 'gaming', 310, 700, 10, 'HDMI2.1, DP1.4a', 300, '16핀(12VHPWR) x1', 16),
+(2010, 'ASUS 지포스 RTX 4080 D6X 16GB', 'ASUS', 'gaming', 330, 750, 11, 'HDMI2.1, DP1.4a', 320, '16핀(12VHPWR) x1', 16),
+(2011, 'MSI 지포스 RTX 5080 D8 16GB', 'MSI', 'gaming', 336, 750, 12, 'HDMI2.1, DP1.4a', 360, '16핀(12VHPWR) x1', 16),
+(2012, 'GIGABYTE 지포스 RTX 4090 D6X 24GB', 'GIGABYTE', 'gaming', 340, 850, 13, 'HDMI2.1, DP1.4a', 450, '16핀(12VHPWR) x1', 24),
+(2013, 'ASUS 지포스 RTX 5090 D8 32GB', 'ASUS', 'gaming', 357, 1000, 14, 'HDMI2.1, DP1.4a', 575, '16핀(12VHPWR) x1', 32);
 
 INSERT INTO vga_prices (product_id, crawl_date, option_name, price) VALUES
 (2001, @today, '기본', 380000), (2002, @today, '기본', 420000), (2003, @today, '기본', 500000),
@@ -62,19 +62,21 @@ INSERT INTO vga_prices (product_id, crawl_date, option_name, price) VALUES
 -- sata3_count/pcie_version/pcie_x16_count/m2_slot_count/vga_connection:
 -- 'SATA3'/'PCIe버전'/'PCIex16'/'M.2'/'VGA 연결' 요약정보에서 추출한 항목
 -- (칩셋 등급이 높을수록 슬롯/포트 개수와 PCIe 버전이 높아지는 실제 패턴 근사).
-INSERT INTO mboard_products (product_id, name, company, usage_type, ram_slot_count, socket, form_factor, ram_type, sata3_count, pcie_version, pcie_x16_count, m2_slot_count, vga_connection) VALUES
-(3001, 'ASUS PRIME H610M-K D4', 'ASUS', 'consumer', 2, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe3.0', 1, 1, 'PCIe3.0 x16'),
-(3002, 'MSI PRO H610M-E D4', 'MSI', 'consumer', 2, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe3.0', 1, 1, 'PCIe3.0 x16'),
-(3003, 'ASUS PRIME B760M-A D4', 'ASUS', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16'),
-(3004, 'MSI PRO B760M-A WIFI D4', 'MSI', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16'),
-(3005, 'ASUS TUF GAMING B760M-PLUS D5', 'ASUS', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR5', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16'),
-(3006, 'MSI MAG B760 박격포 D5', 'MSI', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe4.0', 2, 2, 'PCIe4.0 x16'),
-(3007, 'ASUS TUF GAMING Z790-PLUS D5', 'ASUS', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 2, 3, 'PCIe5.0 x16'),
-(3008, 'MSI MAG Z790 토마호크 D5', 'MSI', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 2, 3, 'PCIe5.0 x16'),
-(3009, 'ASUS ROG STRIX Z790-E D5', 'ASUS', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 3, 4, 'PCIe5.0 x16'),
-(3010, 'MSI MEG Z790 ACE D5', 'MSI', 'consumer', 4, 'LGA1700', 'E-ATX', 'DDR5', 8, 'PCIe5.0', 3, 5, 'PCIe5.0 x16'),
-(3011, 'ASUS PRIME B760I-A D4', 'ASUS', 'consumer', 2, 'LGA1700', 'ITX', 'DDR4', 4, 'PCIe4.0', 1, 1, 'PCIe4.0 x16'),
-(3012, 'MSI MAG B760I 박격포 D5', 'MSI', 'consumer', 2, 'LGA1700', 'ITX', 'DDR5', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16');
+-- max_memory_speed_mhz/m2_max_pcie_version: 부품매칭가이드 2/7절 — 칩셋 등급이
+-- 높을수록(H<B<Z) 지원 메모리 속도와 M.2 PCIe 버전도 높아지는 실제 패턴 근사.
+INSERT INTO mboard_products (product_id, name, company, usage_type, ram_slot_count, socket, form_factor, ram_type, sata3_count, pcie_version, pcie_x16_count, m2_slot_count, vga_connection, max_memory_speed_mhz, m2_max_pcie_version) VALUES
+(3001, 'ASUS PRIME H610M-K D4', 'ASUS', 'consumer', 2, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe3.0', 1, 1, 'PCIe3.0 x16', 3200, 3.0),
+(3002, 'MSI PRO H610M-E D4', 'MSI', 'consumer', 2, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe3.0', 1, 1, 'PCIe3.0 x16', 3200, 3.0),
+(3003, 'ASUS PRIME B760M-A D4', 'ASUS', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16', 3600, 4.0),
+(3004, 'MSI PRO B760M-A WIFI D4', 'MSI', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR4', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16', 3600, 4.0),
+(3005, 'ASUS TUF GAMING B760M-PLUS D5', 'ASUS', 'consumer', 4, 'LGA1700', 'M-ATX', 'DDR5', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16', 5600, 4.0),
+(3006, 'MSI MAG B760 박격포 D5', 'MSI', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe4.0', 2, 2, 'PCIe4.0 x16', 6400, 4.0),
+(3007, 'ASUS TUF GAMING Z790-PLUS D5', 'ASUS', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 2, 3, 'PCIe5.0 x16', 7200, 5.0),
+(3008, 'MSI MAG Z790 토마호크 D5', 'MSI', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 2, 3, 'PCIe5.0 x16', 7200, 5.0),
+(3009, 'ASUS ROG STRIX Z790-E D5', 'ASUS', 'consumer', 4, 'LGA1700', 'ATX', 'DDR5', 6, 'PCIe5.0', 3, 4, 'PCIe5.0 x16', 7800, 5.0),
+(3010, 'MSI MEG Z790 ACE D5', 'MSI', 'consumer', 4, 'LGA1700', 'E-ATX', 'DDR5', 8, 'PCIe5.0', 3, 5, 'PCIe5.0 x16', 8000, 5.0),
+(3011, 'ASUS PRIME B760I-A D4', 'ASUS', 'consumer', 2, 'LGA1700', 'ITX', 'DDR4', 4, 'PCIe4.0', 1, 1, 'PCIe4.0 x16', 3600, 4.0),
+(3012, 'MSI MAG B760I 박격포 D5', 'MSI', 'consumer', 2, 'LGA1700', 'ITX', 'DDR5', 4, 'PCIe4.0', 1, 2, 'PCIe4.0 x16', 5600, 4.0);
 
 INSERT INTO mboard_prices (product_id, crawl_date, option_name, price) VALUES
 (3001, @today, '기본', 90000), (3002, @today, '기본', 95000), (3003, @today, '기본', 150000),
@@ -109,10 +111,10 @@ INSERT INTO ram_prices (product_id, crawl_date, option_name, price) VALUES
 -- ---------------- SSD (삼성전자) ----------------
 -- [갱신] RAM과 마찬가지로 용량은 option_name("500GB"/"1TB")에서 파싱하는
 -- 방식으로 코드가 바뀌어(실제 다나와 옵션 형태), 옵션에 용량을 넣었다.
-INSERT INTO ssd_products (product_id, name, company, usage_type, capacity_gb, interface) VALUES
-(5001, '삼성전자 980 M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe3.0'),
-(5002, '삼성전자 980 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0'),
-(5003, '삼성전자 990 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0');
+INSERT INTO ssd_products (product_id, name, company, usage_type, capacity_gb, interface, m2_form_factor, is_sata_interface, pcie_version) VALUES
+(5001, '삼성전자 980 M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe3.0', '2280', 0, 3.0),
+(5002, '삼성전자 980 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0', '2280', 0, 4.0),
+(5003, '삼성전자 990 PRO M.2 NVMe', '삼성전자', 'consumer', NULL, 'NVMe PCIe4.0', '2280', 0, 4.0);
 
 INSERT INTO ssd_prices (product_id, crawl_date, option_name, price) VALUES
 (5001, @today, '250GB', 45000), (5001, @today, '500GB', 65000), (5001, @today, '1TB', 110000),
@@ -151,20 +153,20 @@ INSERT INTO cooler_prices (product_id, crawl_date, option_name, price) VALUES
 -- '깊이'/'전압변동'/'ETA인증'/'LAMBDA인증'/'PCIe 16핀(12+4)' 요약정보에서 추출한 항목.
 -- pcie_16pin_connector가 NOT NULL인 상품만 실제로 네이티브 12VHPWR/12V-2x6을
 -- 지원한다 — core/psu_rules.py의 이름 텍스트 추측(has_atx3_support)을 대체할 진짜 근거.
-INSERT INTO power_products (product_id, name, company, usage_type, rated_w, form_factor, depth_mm, voltage_regulation, eta_certification, lambda_certification, pcie_16pin_connector) VALUES
-(8001, '마이크로닉스 Classic II 500W 80PLUS', '마이크로닉스', 'consumer', 500, 'ATX', 140, '±3%', NULL, NULL, NULL),
-(8002, '마이크로닉스 Classic II 600W 80PLUS 브론즈', '마이크로닉스', 'consumer', 600, 'ATX', 140, '±3%', 'BRONZE', NULL, NULL),
-(8003, '마이크로닉스 Classic II 700W 80PLUS 브론즈', '마이크로닉스', 'consumer', 700, 'ATX', 140, '±3%', 'BRONZE', NULL, NULL),
-(8004, '마이크로닉스 카이저 800W 80PLUS 골드', '마이크로닉스', 'consumer', 800, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL),
-(8005, '마이크로닉스 카이저 850W 80PLUS 골드', '마이크로닉스', 'consumer', 850, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL),
-(8006, '마이크로닉스 카이저 1000W 80PLUS 골드', '마이크로닉스', 'consumer', 1000, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL),
-(8007, '마이크로닉스 SFX 리코드 650W 골드', '마이크로닉스', 'consumer', 650, 'SFX', 125, '±2%', 'GOLD', 'STANDARD', NULL),
+INSERT INTO power_products (product_id, name, company, usage_type, rated_w, form_factor, depth_mm, voltage_regulation, eta_certification, lambda_certification, pcie_16pin_connector, sata_connector_count) VALUES
+(8001, '마이크로닉스 Classic II 500W 80PLUS', '마이크로닉스', 'consumer', 500, 'ATX', 140, '±3%', NULL, NULL, NULL, 4),
+(8002, '마이크로닉스 Classic II 600W 80PLUS 브론즈', '마이크로닉스', 'consumer', 600, 'ATX', 140, '±3%', 'BRONZE', NULL, NULL, 5),
+(8003, '마이크로닉스 Classic II 700W 80PLUS 브론즈', '마이크로닉스', 'consumer', 700, 'ATX', 140, '±3%', 'BRONZE', NULL, NULL, 6),
+(8004, '마이크로닉스 카이저 800W 80PLUS 골드', '마이크로닉스', 'consumer', 800, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL, 6),
+(8005, '마이크로닉스 카이저 850W 80PLUS 골드', '마이크로닉스', 'consumer', 850, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL, 8),
+(8006, '마이크로닉스 카이저 1000W 80PLUS 골드', '마이크로닉스', 'consumer', 1000, 'ATX', 150, '±2%', 'GOLD', 'STANDARD', NULL, 8),
+(8007, '마이크로닉스 SFX 리코드 650W 골드', '마이크로닉스', 'consumer', 650, 'SFX', 125, '±2%', 'GOLD', 'STANDARD', NULL, 4),
 -- ATX 3.x/12VHPWR 명시 모델 — core/psu_rules.py 가이드 규칙상 고성능 GPU
 -- (tier_rank>=9, RTX 4070Ti/5070Ti 이상)는 상품명에 이 표기가 있는 PSU만
 -- 후보가 되므로, 목업에도 최소 몇 개는 있어야 성능 모드 견적이 나온다.
-(8008, '마이크로닉스 Classic II 풀체인지 850W 80PLUS 골드 ATX3.1 (12VHPWR)', '마이크로닉스', 'consumer', 850, 'ATX', 160, '±0.5%', 'GOLD', 'STANDARD+', '12VHPWR 1개'),
-(8009, '시소닉 FOCUS GX-1000 80PLUS 골드 ATX 3.0 (12VHPWR)', '시소닉', 'consumer', 1000, 'ATX', 160, '±0.5%', 'GOLD', 'STANDARD+', '12VHPWR 1개'),
-(8010, '커세어 RM1200x SHIFT 80PLUS 골드 ATX3.0 (12V-2x6)', '커세어', 'consumer', 1200, 'ATX', 165, '±0.5%', 'GOLD', 'STANDARD+', '12V2x6 1개');
+(8008, '마이크로닉스 Classic II 풀체인지 850W 80PLUS 골드 ATX3.1 (12VHPWR)', '마이크로닉스', 'consumer', 850, 'ATX', 160, '±0.5%', 'GOLD', 'STANDARD+', '12VHPWR 1개', 8),
+(8009, '시소닉 FOCUS GX-1000 80PLUS 골드 ATX 3.0 (12VHPWR)', '시소닉', 'consumer', 1000, 'ATX', 160, '±0.5%', 'GOLD', 'STANDARD+', '12VHPWR 1개', 10),
+(8010, '커세어 RM1200x SHIFT 80PLUS 골드 ATX3.0 (12V-2x6)', '커세어', 'consumer', 1200, 'ATX', 165, '±0.5%', 'GOLD', 'STANDARD+', '12V2x6 1개', 10);
 
 INSERT INTO power_prices (product_id, crawl_date, option_name, price) VALUES
 (8001, @today, '기본', 45000), (8002, @today, '기본', 55000), (8003, @today, '기본', 65000),
@@ -214,12 +216,12 @@ INSERT INTO game_requirements (id, game_name, cpu_tier_rank, cpu_display, gpu_ti
 -- 등급/저장장치 값은 New_crawler/update_usage_profiles_v3.sql("PC 용도별 부품 매칭
 -- 로직" 문서, 실사용자 제공)과 동일 — cpu_performance_tier/gpu_performance_tier의
 -- tier_rank로 환산한 근거는 그 스크립트 상단 주석 참고.
-INSERT INTO usage_profiles (id, code, display_name, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type, required_ssd_gb, required_hdd_gb) VALUES
-(1, 'OFFICE', '문서작업/인터넷', 1, 1, 16, NULL, 512, 0),
-(2, 'VIDEO_EDITING', '영상편집', 11, 5, 32, 'DDR5', 1000, 2000),
-(3, 'RENDERING_3D', '3D 렌더링/모델링', 3, 3, 64, 'DDR5', 1000, 4000),
-(4, 'STREAMING', '방송/스트리밍', 9, 2, 32, NULL, 1000, 0),
-(5, 'DEVELOPMENT', '개발/컴파일', 5, 1, 32, NULL, 1000, 0);
+INSERT INTO usage_profiles (id, code, display_name, required_cpu_tier, required_gpu_tier, required_ram_gb, required_ram_type, required_ssd_gb, required_hdd_gb, required_vram_gb) VALUES
+(1, 'OFFICE', '문서작업/인터넷', 1, 1, 16, NULL, 512, 0, NULL),
+(2, 'VIDEO_EDITING', '영상편집', 11, 5, 32, 'DDR5', 1000, 2000, NULL),
+(3, 'RENDERING_3D', '3D 렌더링/모델링', 3, 3, 64, 'DDR5', 1000, 4000, 16),
+(4, 'STREAMING', '방송/스트리밍', 9, 2, 32, NULL, 1000, 0, NULL),
+(5, 'DEVELOPMENT', '개발/컴파일', 5, 1, 32, NULL, 1000, 0, NULL);
 
 -- ============================================================
 -- 부품 사진/링크 목업 (실제 product_media 연결 전까지의 플레이스홀더)
