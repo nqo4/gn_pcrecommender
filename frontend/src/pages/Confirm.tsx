@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { BuildResponse, Part } from "../api";
 import type { Selection } from "./Result";
+import { isMockMode, MOCK_BUILD_RESULT, MOCK_SELECTION } from "../mockData";
 
 const CATEGORY_LABELS: Record<string, string> = {
   cpu: "CPU", gpu: "GPU", mboard: "메인보드", ram: "RAM",
@@ -39,8 +40,9 @@ export default function Confirm() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as { result?: BuildResponse; selection?: Selection } | null;
-  const result = state?.result;
-  const selection = state?.selection;
+  // /confirm?mock=1 로 바로 들어온 경우(홈→결과를 거치지 않은 경우)에도 목 데이터로 채운다.
+  const result = state?.result ?? (isMockMode() ? MOCK_BUILD_RESULT : undefined);
+  const selection = state?.selection ?? (isMockMode() ? MOCK_SELECTION : undefined);
   const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
 
   if (!result || result.status !== "ok") {
