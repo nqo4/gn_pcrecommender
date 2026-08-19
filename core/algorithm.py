@@ -396,14 +396,20 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         # 앞부분(PBP, Processor Base Power = 기본/평균 전력)만 파싱한다.
         # 순간 최대(MTP, 뒷부분)는 이번 결정에 따라 쓰지 않는다.
         #
-        # *** 매칭 로직 사전 준비(실사용자 요청: "3D렌더링 CPU 코어/스레드
-        # 조건") *** core_count/thread_count도 avg_power_w와 같은 방식으로
-        # danawa_spec_summary에서 서브쿼리로 가져오도록 미리 만들어뒀다.
-        # ↓↓↓ TODO: 실제 크롤링 완료 후 spec_key 이름을 확인해서 아래
-        # '코어 수'/'스레드 수' 부분을 정확한 값으로 바꿀 것(지금은 실제
-        # danawa 표기를 확인 못 해서 추정값 — check_ram_spec_keys.py와
-        # 같은 방식으로 category='cpu'에서 스레드/코어 관련 spec_key를
-        # 먼저 조회해서 정확한 이름을 확인해야 한다). ↑↑↑
+        # *** 수정(feature/db-files 브랜치와의 충돌 해소: "05_신규필드_통합보정.sql"이
+        # cpu_products.core_count/thread_count를 실제 컬럼으로 채운다) ***
+        # 예전엔 여기 core_count/thread_count를 spec_key='코어 수'/'스레드 수'로
+        # 추측한 서브쿼리 별칭으로 만들었는데(실제로는 그런 spec_key가 없어서
+        # 항상 NULL이었다 — 05번 스크립트는 대신 라벨 없는 행에서 "4코어"/
+        # "8스레드" 같은 패턴을 직접 정규식으로 파싱한다), 이제 그 스크립트가
+        # 진짜 컬럼을 만들어서 `SELECT p.*`에 core_count/thread_count가 이미
+        # 포함된다 — 여기서 같은 이름으로 또 별칭을 만들면 "Duplicate column
+        # name" SQL 에러가 난다. 그래서 서브쿼리를 없애고 실제 컬럼을 그대로
+        # 쓴다(아래 r.get()이 값을 그대로 읽음). ***
+        # ※ cpu_products_v 뷰는 "CREATE VIEW ... AS SELECT p.* ..." 형태라
+        # 뷰 생성 시점에 컬럼 목록이 고정된다 — 03_부품_상세정보.sql로 컬럼을
+        # 추가한 뒤에는 db/create_price_views.sql을 반드시 다시 실행해야
+        # 뷰에도 core_count/thread_count가 보인다(안 하면 계속 NULL).
         rows = _fetch_all(
             conn, "cpu_products_v", "usage_type = 'consumer'", media_category="cpu",
             extra_select=(
@@ -417,20 +423,13 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
                 # max_power_w를, PSU는 여전히 avg_power_w를 쓴다.
                 "(SELECT CAST(SUBSTRING_INDEX(spec_value, '-', -1) AS UNSIGNED) "
                 " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='PBP-MTP' LIMIT 1) AS max_power_w, "
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
-                " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='코어 수' LIMIT 1) AS core_count, "  # TODO: 실제 spec_key로 교체
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
-                " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='스레드 수' LIMIT 1) AS thread_count"  # TODO: 실제 spec_key로 교체
+                " AND spec_key='PBP-MTP' LIMIT 1) AS max_power_w"
             ),
         )
         rows = [r for r in rows if (r["tier_rank"] or 0) >= req.cpu_tier_min]
-        # *** 신설(매칭 로직 사전 준비) *** req.cpu_min_cores/threads는 지금
-        # merge_requirements가 항상 0(제한 없음)을 반환하므로, 코어/스레드
-        # 크롤링이 끝나고 usage_profiles에 값이 채워지기 전까지는 이 필터가
-        # 실질적으로 아무것도 거르지 않는다(안전하게 미리 연결해둔 상태).
+        # *** 수정(매칭 로직 완성) *** req.cpu_min_cores/threads는 usage_profiles.
+        # required_cpu_cores(_perf)/required_cpu_threads(_perf)가 채워진 용도
+        # (3D렌더링 등)에서만 0이 아니다 — 나머지는 여전히 제한 없음.
         if req.cpu_min_cores:
             rows = [r for r in rows if (r.get("core_count") or 0) >= req.cpu_min_cores]
         if req.cpu_min_threads:
