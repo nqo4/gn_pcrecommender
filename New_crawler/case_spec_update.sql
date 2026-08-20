@@ -26,10 +26,12 @@ SET p.support_form_factors = spec.ff
 WHERE p.support_form_factors IS NULL;
 
 -- 2) 최대 CPU쿨러 장착 높이 (mm)
+-- [수정] REGEXP_REPLACE(spec_value, '[^0-9]', '')는 "최대 200mm(팬 미장착시 220mm)"처럼
+--   숫자가 두 번 나오면 200220으로 이어붙는다 — 첫 숫자 덩어리만 뽑는 REGEXP_SUBSTR로 교체.
 UPDATE IGNORE case_products p
 JOIN (
     SELECT product_id,
-           MIN(CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)) AS h
+           MIN(CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)) AS h
     FROM danawa_spec_summary
     WHERE category = 'case' AND spec_key = 'CPU쿨러 높이'
       AND spec_value REGEXP '[0-9]+mm'
@@ -54,10 +56,11 @@ SET p.support_psu_form_factors = spec.pf
 WHERE p.support_psu_form_factors IS NULL;
 
 -- 4) 최대 VGA 길이 (mm) - 정확한 spec_key 미확인이라 넓게 잡음
+-- [수정] 위와 동일한 이유로 REGEXP_SUBSTR로 교체(숫자 이어붙음 방지).
 UPDATE IGNORE case_products p
 JOIN (
     SELECT product_id,
-           MAX(CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)) AS l
+           MAX(CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)) AS l
     FROM danawa_spec_summary
     WHERE category = 'case'
       AND (spec_key LIKE '%그래픽카드%' OR spec_key LIKE '%VGA%')

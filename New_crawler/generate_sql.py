@@ -242,12 +242,17 @@ CREATE TABLE stg_{prefix} (
     {d_cols}
 );
 
+-- [수정] danawa_crawler(csv.writer)가 만드는 CSV는 Windows 방식 CRLF(\\r\\n)인데
+--        LINES TERMINATED BY '\\n'만 쓰면, 쉼표 포함 가격(대부분)이 따옴표로 감싸질 때
+--        닫는 따옴표 뒤에 남은 \\r 때문에 그 줄이 안 끝난 것으로 오인해 다음 줄과 필드가
+--        뒤섞임 -> 상품이 통째로 유실/에러(VGA·MBoard 대부분, RAM·Cooler·Power 전체 0건).
+--        \\r\\n으로 맞추면 정상 파싱됨.
 LOAD DATA LOCAL INFILE '{load_path}'
 INTO TABLE stg_{prefix}
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
 OPTIONALLY ENCLOSED BY '"'
-LINES TERMINATED BY '\\n'
+LINES TERMINATED BY '\\r\\n'
 IGNORE 1 ROWS;
 
 SELECT '{label} raw rows' AS info, COUNT(*) AS cnt FROM stg_{prefix};
@@ -473,11 +478,13 @@ SET p.power_min_w = spec.pmin,
 WHERE p.power_min_w IS NULL;
 
 -- 3) 전력(AMD 방식: TDP=최소, PPT=최대 가 별도 항목으로 표기되는 경우)
+-- [수정] REGEXP_REPLACE(spec_value, '[^0-9]', '')는 값에 숫자가 두 번 나오면
+--        이어붙여 엉뚱한 값이 될 수 있다 - 첫 숫자 덩어리만 뽑는 REGEXP_SUBSTR로 교체.
 UPDATE cpu_products p
 JOIN (
     SELECT t.product_id,
-           CAST(REGEXP_REPLACE(t.spec_value, '[^0-9]', '') AS UNSIGNED) AS tdp,
-           CAST(REGEXP_REPLACE(pp.spec_value, '[^0-9]', '') AS UNSIGNED) AS ppt
+           CAST(REGEXP_SUBSTR(t.spec_value, '[0-9]+') AS UNSIGNED) AS tdp,
+           CAST(REGEXP_SUBSTR(pp.spec_value, '[0-9]+') AS UNSIGNED) AS ppt
     FROM danawa_spec_summary t
     JOIN danawa_spec_summary pp
       ON pp.category = 'cpu' AND pp.product_id = t.product_id AND pp.spec_key LIKE '%PPT%'

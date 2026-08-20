@@ -188,10 +188,15 @@ def create_build():
 
     response = build_result_to_json(result)
     # 업그레이드 API에서 재사용할 수 있도록 요구사양/옵션도 같이 돌려준다(stateless).
+    # *** 수정(실사용자 발견: "게임 선택 시 SSD/HDD 최소 1TB 보정이 실제 견적엔
+    # 반영되는데 _requirements엔 보정 전 req.ssd_gb_min/hdd_gb_min이 그대로
+    # 나간다") *** 여기 담기는 값은 실제로 이 빌드에 쓰인 ssd_gb_min/hdd_gb_min
+    # 지역변수(위에서 게임 보정까지 반영된 값)를 그대로 써야, 나중에 이 값을
+    # 읽는 곳(표시든 재계산이든)이 실제 견적과 어긋나지 않는다.
     response["_requirements"] = {
         "cpu_tier_min": req.cpu_tier_min, "gpu_tier_min": req.gpu_tier_min,
         "ram_gb_min": req.ram_gb_min,
-        "ssd_gb_min": req.ssd_gb_min, "hdd_gb_min": req.hdd_gb_min,
+        "ssd_gb_min": ssd_gb_min, "hdd_gb_min": hdd_gb_min,
         "requires_dgpu": req.requires_dgpu,
     }
     response["_options"] = {"placement": opt.placement, "rgb": opt.rgb}

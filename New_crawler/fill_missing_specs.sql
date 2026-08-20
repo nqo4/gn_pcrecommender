@@ -31,11 +31,14 @@ SELECT product_id, name FROM hdd_products WHERE capacity_gb IS NULL LIMIT 20;
 
 -- ============================================================
 -- 2) 쿨러 TDP (확정) - spec_key='TDP', 값은 "130W" 또는 "TDP 100W" 두 형태 혼재
+-- [수정] REGEXP_REPLACE(spec_value, '[^0-9]', '')는 값에 숫자가 두 번 나오면
+--        이어붙여 엉뚱한 값이 될 수 있다 - 첫 숫자 덩어리만 뽑는 REGEXP_SUBSTR로 교체
+--        (db/add_cooler_tdp_column.sql과 동일한 버그, 동일하게 수정).
 -- ============================================================
 UPDATE IGNORE cooler_products p
 JOIN (
     SELECT product_id,
-           MAX(CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)) AS w
+           MAX(CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)) AS w
     FROM danawa_spec_summary
     WHERE category = 'cooler'
       AND spec_key = 'TDP'

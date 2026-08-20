@@ -147,6 +147,10 @@ class Requirements:
     # 끝나면 CPU 스테이지의 아래 TODO 부분만 실제 spec_key로 채우면 된다.
     cpu_min_cores: int = 0
     cpu_min_threads: int = 0
+    # *** 신설(부품매칭 가이드 3절: "GPU(최우선 주요 부하 지점) - VRAM 16GB
+    # 이상 필수") *** 3D렌더링/모델링 용도만 값이 채워지고(usage_profiles.
+    # required_vram_gb), 나머지 용도는 0(제한 없음)이다.
+    vram_gb_min: int = 0
 
 
 def merge_requirements(rows: list[dict]) -> Requirements:
@@ -177,11 +181,13 @@ def merge_requirements(rows: list[dict]) -> Requirements:
     #없거나 NULL이라 항상 0(제한 없음)으로 병합된다. ***
     cpu_min_cores = max((r.get("required_cpu_cores") or 0) for r in rows)
     cpu_min_threads = max((r.get("required_cpu_threads") or 0) for r in rows)
+    vram_gb_min = max((r.get("required_vram_gb") or 0) for r in rows)
 
     return Requirements(
         cpu_tier_min=cpu_tier_min, gpu_tier_min=gpu_tier_min, ram_gb_min=ram_gb_min,
         ssd_gb_min=ssd_gb_min, hdd_gb_min=hdd_gb_min, requires_dgpu=requires_dgpu,
         cpu_min_cores=cpu_min_cores, cpu_min_threads=cpu_min_threads,
+        vram_gb_min=vram_gb_min,
     )
 
 
@@ -253,7 +259,10 @@ MIN_DDR5_SPEED_COST = 5600
 MIN_DDR5_SPEED_PERF = 6000
 
 
-def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_gb_min: int, mode: str = "cost") -> list[dict]:
+def _fetch_ram_options(
+    conn, ram_type: str, mboard_slot_count: int | None, ram_gb_min: int, mode: str = "cost",
+    mboard_max_speed_mhz: int | None = None,
+) -> list[dict]:
     """RAM을 상품(product_id) 단위가 아니라 "옵션"(용량 구성) 단위로 조회한다.
 
     *** 수정(실사용자 재요청: "메인보드를 다시 먼저 가져올 것") ***
@@ -278,7 +287,7 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
             """
             SELECT p.product_id, p.name, pp.option_name, pp.price AS price_krw,
                    m.image_url, m.product_url,
-                   (SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED)
+                   (SELECT CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED)
                     FROM danawa_spec_summary
                     WHERE category = 'ram' AND product_id = p.product_id AND spec_key = '높이'
                     LIMIT 1) AS heatsink_height_mm
@@ -294,7 +303,7 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
         cursor.close()
         return rows
 
-    def _to_options(rows: list[dict], min_speed: int, max_speed: int | None = None) -> list[dict]:
+    def _to_options(rows: list[dict], min_speed: int, max_speed: int | None = None, speed_cap: int | None = None) -> list[dict]:
         options = []
         for row in rows:
             speed_m = _RAM_SPEED_RE.search(row["name"] or "")
@@ -302,6 +311,8 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
             if speed < min_speed:
                 continue
             if max_speed and speed > max_speed:
+                continue
+            if speed_cap and speed > speed_cap:
                 continue
             parsed = _parse_ram_option(row["option_name"])
             if parsed is None:
@@ -330,23 +341,37 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
         return options
 
     all_rows = _query()
-    if ram_type != "DDR5":
-        return _to_options(all_rows, 0)  # DDR4는 클럭 목표 규칙 대상이 아님(가이드가 DDR5 기준)
 
-    if mode == "perf":
-        # 성능: 6000~6400MHz 범위 우선 -> 없으면 6000MHz 이상 전체 -> 그래도 없으면 전체
-        in_range = _to_options(all_rows, MIN_DDR5_SPEED_PERF, 6400)
-        if in_range:
-            return in_range
-        at_least_perf = _to_options(all_rows, MIN_DDR5_SPEED_PERF)
-        if at_least_perf:
-            return at_least_perf
-        return _to_options(all_rows, 0)
+    def _select(speed_cap: int | None) -> list[dict]:
+        """*** 신설(부품매칭 가이드 2절: "메인보드 최대 메모리 지원 속도(MHz)
+        >= RAM 동작 클럭(MHz)") *** speed_cap(메인보드 max_memory_speed_mhz)이
+        있으면 그 속도를 넘는 RAM은 후보에서 제외한다 — 다만 이건 물리적으로
+        완전히 안 꽂히는 게 아니라 "그 속도로는 못 돈다"는 정도라(JEDEC
+        표준 속도로 자동 하향), 이 상한 때문에 후보가 아예 0개가 되면
+        상한 없이 다시 시도한다(과도한 배제 방지 — RAM 규격/소켓처럼 진짜
+        하드 제약이 아니므로)."""
+        if ram_type != "DDR5":
+            return _to_options(all_rows, 0, speed_cap=speed_cap)  # DDR4는 클럭 목표 규칙 대상이 아님(가이드가 DDR5 기준)
 
-    fast = _to_options(all_rows, MIN_DDR5_SPEED_COST if ram_type == "DDR5" else 0)
-    if fast:
-        return fast
-    return _to_options(all_rows, 0)
+        if mode == "perf":
+            # 성능: 6000~6400MHz 범위 우선 -> 없으면 6000MHz 이상 전체 -> 그래도 없으면 전체
+            in_range = _to_options(all_rows, MIN_DDR5_SPEED_PERF, 6400, speed_cap=speed_cap)
+            if in_range:
+                return in_range
+            at_least_perf = _to_options(all_rows, MIN_DDR5_SPEED_PERF, speed_cap=speed_cap)
+            if at_least_perf:
+                return at_least_perf
+            return _to_options(all_rows, 0, speed_cap=speed_cap)
+
+        fast = _to_options(all_rows, MIN_DDR5_SPEED_COST if ram_type == "DDR5" else 0, speed_cap=speed_cap)
+        if fast:
+            return fast
+        return _to_options(all_rows, 0, speed_cap=speed_cap)
+
+    capped = _select(mboard_max_speed_mhz)
+    if capped:
+        return capped
+    return _select(None)
 
 
 
@@ -396,14 +421,20 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         # 앞부분(PBP, Processor Base Power = 기본/평균 전력)만 파싱한다.
         # 순간 최대(MTP, 뒷부분)는 이번 결정에 따라 쓰지 않는다.
         #
-        # *** 매칭 로직 사전 준비(실사용자 요청: "3D렌더링 CPU 코어/스레드
-        # 조건") *** core_count/thread_count도 avg_power_w와 같은 방식으로
-        # danawa_spec_summary에서 서브쿼리로 가져오도록 미리 만들어뒀다.
-        # ↓↓↓ TODO: 실제 크롤링 완료 후 spec_key 이름을 확인해서 아래
-        # '코어 수'/'스레드 수' 부분을 정확한 값으로 바꿀 것(지금은 실제
-        # danawa 표기를 확인 못 해서 추정값 — check_ram_spec_keys.py와
-        # 같은 방식으로 category='cpu'에서 스레드/코어 관련 spec_key를
-        # 먼저 조회해서 정확한 이름을 확인해야 한다). ↑↑↑
+        # *** 수정(feature/db-files 브랜치와의 충돌 해소: "05_신규필드_통합보정.sql"이
+        # cpu_products.core_count/thread_count를 실제 컬럼으로 채운다) ***
+        # 예전엔 여기 core_count/thread_count를 spec_key='코어 수'/'스레드 수'로
+        # 추측한 서브쿼리 별칭으로 만들었는데(실제로는 그런 spec_key가 없어서
+        # 항상 NULL이었다 — 05번 스크립트는 대신 라벨 없는 행에서 "4코어"/
+        # "8스레드" 같은 패턴을 직접 정규식으로 파싱한다), 이제 그 스크립트가
+        # 진짜 컬럼을 만들어서 `SELECT p.*`에 core_count/thread_count가 이미
+        # 포함된다 — 여기서 같은 이름으로 또 별칭을 만들면 "Duplicate column
+        # name" SQL 에러가 난다. 그래서 서브쿼리를 없애고 실제 컬럼을 그대로
+        # 쓴다(아래 r.get()이 값을 그대로 읽음). ***
+        # ※ cpu_products_v 뷰는 "CREATE VIEW ... AS SELECT p.* ..." 형태라
+        # 뷰 생성 시점에 컬럼 목록이 고정된다 — 03_부품_상세정보.sql로 컬럼을
+        # 추가한 뒤에는 db/create_price_views.sql을 반드시 다시 실행해야
+        # 뷰에도 core_count/thread_count가 보인다(안 하면 계속 NULL).
         rows = _fetch_all(
             conn, "cpu_products_v", "usage_type = 'consumer'", media_category="cpu",
             extra_select=(
@@ -417,20 +448,13 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
                 # max_power_w를, PSU는 여전히 avg_power_w를 쓴다.
                 "(SELECT CAST(SUBSTRING_INDEX(spec_value, '-', -1) AS UNSIGNED) "
                 " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='PBP-MTP' LIMIT 1) AS max_power_w, "
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
-                " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='코어 수' LIMIT 1) AS core_count, "  # TODO: 실제 spec_key로 교체
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
-                " FROM danawa_spec_summary WHERE category='cpu' AND product_id=p.product_id "
-                " AND spec_key='스레드 수' LIMIT 1) AS thread_count"  # TODO: 실제 spec_key로 교체
+                " AND spec_key='PBP-MTP' LIMIT 1) AS max_power_w"
             ),
         )
         rows = [r for r in rows if (r["tier_rank"] or 0) >= req.cpu_tier_min]
-        # *** 신설(매칭 로직 사전 준비) *** req.cpu_min_cores/threads는 지금
-        # merge_requirements가 항상 0(제한 없음)을 반환하므로, 코어/스레드
-        # 크롤링이 끝나고 usage_profiles에 값이 채워지기 전까지는 이 필터가
-        # 실질적으로 아무것도 거르지 않는다(안전하게 미리 연결해둔 상태).
+        # *** 수정(매칭 로직 완성) *** req.cpu_min_cores/threads는 usage_profiles.
+        # required_cpu_cores(_perf)/required_cpu_threads(_perf)가 채워진 용도
+        # (3D렌더링 등)에서만 0이 아니다 — 나머지는 여전히 제한 없음.
         if req.cpu_min_cores:
             rows = [r for r in rows if (r.get("core_count") or 0) >= req.cpu_min_cores]
         if req.cpu_min_threads:
@@ -460,6 +484,13 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
             ),
         )
         rows = [r for r in rows if (r["tier_rank"] or 0) >= req.gpu_tier_min]
+        # *** 신설(부품매칭 가이드 3절: 3D렌더링/모델링은 VRAM 16GB 이상 필수) ***
+        # vram_gb는 상품명("...D6X 12GB")에서 추출한 값(New_crawler/
+        # fill_matching_guide_specs.sql)이라 일부 상품은 크롤링 누락으로 NULL일
+        # 수 있다 — req.vram_gb_min이 걸려있는데 값을 모르는 상품은 안전하게
+        # 후보에서 제외한다(있는지 없는지 모르는 조건을 통과시키지 않는다).
+        if req.vram_gb_min:
+            rows = [r for r in rows if (r.get("vram_gb") or 0) >= req.vram_gb_min]
         cpu = context.get("cpu")
         if cpu:
             cpu_bucket = cpu_tier_bucket(cpu.get("tier_rank"))
@@ -496,7 +527,10 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         # ram_slot_count를 그대로 받아서 그 안에서 RAM을 고른다(속도 우선
         # 순위·듀얼채널 로직은 _fetch_ram_options 안에서 그대로 유지).
         mboard = context["mboard"]
-        rows = _fetch_ram_options(conn, mboard["ram_type"], mboard["ram_slot_count"], req.ram_gb_min, mode)
+        rows = _fetch_ram_options(
+            conn, mboard["ram_type"], mboard["ram_slot_count"], req.ram_gb_min, mode,
+            mboard_max_speed_mhz=mboard.get("max_memory_speed_mhz"),
+        )
     elif stage == "cooler":
         # *** 수정(실사용자 최종 결정) ***
         # 1) 등급 기반 강제: i7/i9 "중에서도 K 시리즈"만 무조건 3열 수랭
@@ -517,12 +551,18 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         rows = _fetch_all(
             conn, "cooler_products_v", media_category="cooler",
             extra_select=(
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
+                # *** 수정(실측 확인: "팬 크기" spec_value가 "140mm, 120mm"처럼
+                # 팬 크기가 다른 경우 콤마로 여러 개 나열될 수 있다 — 예전
+                # REGEXP_REPLACE(...,'[^0-9]','')는 숫자만 남기고 다 이어붙여서
+                # "140120mm" 같은 말도 안 되는 값이 나왔다. REGEXP_SUBSTR로
+                # 첫 번째 숫자 덩어리만 뽑는다. spec_key 이름 자체는 실측
+                # 확인 결과 맞았다(TODO였던 게 이미 정확한 이름이었음). ***
+                "(SELECT CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED) "
                 " FROM danawa_spec_summary WHERE category='cooler' AND product_id=p.product_id "
-                " AND spec_key='팬 크기' LIMIT 1) AS fan_length_mm, "  # TODO: 실제 spec_key로 교체
-                "(SELECT CAST(REGEXP_REPLACE(spec_value, '[^0-9]', '') AS UNSIGNED) "
+                " AND spec_key='팬 크기' LIMIT 1) AS fan_length_mm, "
+                "(SELECT CAST(REGEXP_SUBSTR(spec_value, '[0-9]+') AS UNSIGNED) "
                 " FROM danawa_spec_summary WHERE category='cooler' AND product_id=p.product_id "
-                " AND spec_key='팬 개수' LIMIT 1) AS fan_count"  # TODO: 실제 spec_key로 교체
+                " AND spec_key='팬 개수' LIMIT 1) AS fan_count"
             ),
         )
         rows = [r for r in rows if cpu["socket"] in [s.strip() for s in (r["support_sockets"] or "").split(",")]]
@@ -554,6 +594,22 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
             rows = [
                 r for r in rows
                 if r["cooler_type"] != "공랭" or (r["height_mm"] or 0) < 155
+            ]
+
+        # *** 신설(실사용자 발견: "성능 모드 다운그레이드에서 케이스가 쿨러보다
+        # 먼저 정해지도록 순서를 바꿨더니, 케이스 선택 시점엔 쿨러가 아직
+        # 수랭이라 케이스 쪽 공랭 높이 체크(case 스테이지의 max_cooler_height_mm
+        # 검사)가 통째로 스킵된다 — 나중에 쿨러가 진짜로 공랭으로 바뀌어도
+        # 이미 정해진 케이스와 실제로 맞는지 아무도 확인 안 한다") ***
+        # case가 이미 정해져 있으면(다운그레이드 흐름), 공랭 후보를 그 케이스의
+        # max_cooler_height_mm으로 직접 걸러서 이 구멍을 메운다. 가성비 모드나
+        # case가 아직 없는 시점(cooler가 case보다 먼저인 STAGES 순서)에는
+        # context에 case가 없으므로 이 필터는 자동으로 건너뛴다.
+        case = context.get("case")
+        if case:
+            rows = [
+                r for r in rows
+                if r["cooler_type"] != "공랭" or (r["height_mm"] or 0) <= (case["max_cooler_height_mm"] or 0)
             ]
     elif stage == "psu":
         # *** 수정(실사용자 최종 결정: PSU/쿨러 계산식을 하나로 통일) ***
@@ -588,6 +644,23 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         rows = [r for r in rows if meets_80plus_minimum(r["name"], min_tier)]
         if form:
             rows = [r for r in rows if r["form_factor"] == form]
+        # *** 신설(실사용자 발견과 동일한 클래스의 버그: 성능 모드 다운그레이드
+        # 순서(DOWNGRADE_ORDER)에서 case가 psu보다 먼저 확정된다 — case는 그
+        # 시점의 psu 폼팩터를 보고 골라지는데, 여기 psu 후보는 opt.placement가
+        # "미니 PC"가 아니면 폼팩터 필터가 전혀 없어 ATX/SFX/TFX가 가격순으로
+        # 뒤섞인다. 다운그레이드가 더 싼 다른 폼팩터 PSU를 고르면, 이미 확정된
+        # case가 실제로는 그 폼팩터를 지원 안 하는 조합이 나올 수 있다 —
+        # 쿨러-케이스 높이 검증(위 "cooler" 스테이지)과 같은 문제라 같은 방식
+        # (context에 case가 이미 있으면 그 case가 지원하는 폼팩터로 역필터)으로
+        # 막는다. case가 아직 없는 시점(search()의 기본 STAGES 순서 — psu가
+        # case보다 먼저)에는 context에 case가 없으므로 자동으로 건너뛴다. ***
+        case = context.get("case")
+        if case:
+            rows = [
+                r for r in rows
+                if r["form_factor"] and case["support_psu_form_factors"]
+                and _psu_form_factor_matches(r["form_factor"], case["support_psu_form_factors"])
+            ]
     elif stage == "case":
         mboard, cooler, psu = context["mboard"], context["cooler"], context["psu"]
         gpu = context.get("gpu")
@@ -604,23 +677,29 @@ def get_candidates(conn, stage: str, context: dict, req: Requirements, opt: Opti
         else:
             # *** 수정(실사용자 최종 결정: "라디에이터 길이 옵션이 아니라
             # '팬 길이 × 팬 개수' <= 케이스 라디에이터 지원 크기로 매칭") ***
-            # 케이스의 라디에이터 지원 크기 컬럼(radiator_support_mm)이
-            # 아직 없어서(원본 크롤링 데이터에 케이스 카테고리 항목 자체가
-            # 없음이 확인됨) r.get()으로 안전하게 접근한다 — 값이 없으면
-            # 이 검증을 건너뛴다(과도한 배제 방지, 나중에 데이터 생기면
-            # 자동으로 검증이 활성화된다).
+            # *** 수정(부품매칭 가이드 6절): case_products에 radiator_support_mm
+            # 같은 단일 컬럼은 없지만, radiator_top/side/rear/front_mm(위치별
+            # 지원 크기, New_crawler/add_missing_spec_columns.sql·
+            # fill_missing_specs.sql로 실데이터 확보됨)이 이미 있다 — 장착
+            # 위치(상단/측면/후면/전면)까지는 크롤링에 없어서 특정할 수 없으니,
+            # "네 위치 중 하나라도 수용 가능하면 통과"로 근사한다(가이드 원문의
+            # "장착 위치별 최대 지원 규격"을 완전히 좁히진 못하지만, 그중
+            # 하나도 못 맞으면 물리적으로 아예 못 다는 게 확실하므로 최소한의
+            # 하드 제약은 지킨다). ***
             fan_length = cooler.get("fan_length_mm")
             fan_count = cooler.get("fan_count")
             if fan_length and fan_count:
                 required_radiator_mm = fan_length * fan_count
-                rows = [
-                    r for r in rows
-                    if not r.get("radiator_support_mm") or required_radiator_mm <= r["radiator_support_mm"]
-                ]
-        # *** 수정(실제 스키마 연결): case_products에 수랭 라디에이터 지원 크기
-        # 컬럼(radiator_support_mm)이 아직 없어서(나중에 추가 컬럼 작업 때 처리),
-        # 위 검증은 지금은 사실상 항상 통과한다(데이터가 없으면 건너뜀) —
-        # 크롤링 완료 후 이 컬럼이 채워지면 자동으로 정상 작동한다. ***
+
+                def _fits(r):
+                    positions = (r.get("radiator_top_mm"), r.get("radiator_side_mm"),
+                                 r.get("radiator_rear_mm"), r.get("radiator_front_mm"))
+                    sizes = [int(v) for v in positions if v is not None and str(v).strip().isdigit()]
+                    if not sizes:
+                        return True  # 위치별 데이터가 하나도 없는 케이스는 배제하지 않는다(과도한 배제 방지)
+                    return required_radiator_mm <= max(sizes)
+
+                rows = [r for r in rows if _fits(r)]
         if opt.placement == "미니 PC":
             rows = [r for r in rows if r["support_form_factors"] == "ITX"]
         elif opt.placement == "책상 위":
@@ -849,7 +928,7 @@ def build_cost_efficient(
             status="budget_insufficient",
             message=f"최소 견적조차 예산을 초과합니다 — 최소한 {result.total_price + storage_price:,}원의 예산이 필요합니다",
         )
-    return _apply_final_review(_attach_storage(result, storage), req, opt, budget)
+    return _finalize_with_storage(result, req, opt, budget, ssd_gb_min, hdd_gb_min)
 
 
 def _attach_storage(result: BuildResult, storage: dict) -> BuildResult:
@@ -865,6 +944,28 @@ def _attach_storage(result: BuildResult, storage: dict) -> BuildResult:
             parts[key] = storage[key]
             total += storage[key]["price_krw"]
     return BuildResult(parts=parts, total_price=total, status="ok")
+
+
+def _finalize_with_storage(
+    result: BuildResult, req: Requirements, opt: Options, budget: int,
+    ssd_gb_min: int, hdd_gb_min: int,
+) -> BuildResult:
+    """*** 신설(부품매칭 가이드 7/8절: M.2 PCIe버전/SATA 커넥터 매칭) ***
+    build_cost_efficient/build_performance의 여러 반환 지점에서 공통으로 쓰는
+    마무리 단계 — mboard/psu가 이제 확정됐으니(search()/다운그레이드 완료 후),
+    그 둘을 알고 있는 상태로 저장장치를 다시 골라서(search() 이전엔 몰라서
+    호환성 검증 없이 최저가로만 골랐었다) 최종 결과에 반영한다. 최저가가
+    바뀔 수 있어 예산도 다시 확인한다."""
+    if result.status != "ok":
+        return result
+    storage = select_storage(ssd_gb_min, hdd_gb_min, mboard=result.parts.get("mboard"), psu=result.parts.get("psu"))
+    storage_price = sum(p["price_krw"] for p in storage.values() if p)
+    if result.total_price + storage_price > budget:
+        return BuildResult(
+            status="budget_insufficient",
+            message=f"메인보드/파워와 호환되는 저장장치까지 포함하면 예산을 초과합니다 — 최소한 {result.total_price + storage_price:,}원의 예산이 필요합니다",
+        )
+    return _apply_final_review(_attach_storage(result, storage), req, opt, budget)
 
 
 def _apply_final_review(result: BuildResult, req: Requirements, opt: Options, budget: int) -> BuildResult:
@@ -938,11 +1039,15 @@ def _fetch_storage_options(conn, prefix: str, media_category: str, gb_min: int) 
     2개/4개 묶음(벌크) 표기가 있는 옵션은 일반 조립 PC 용도가 아니라고 보고
     제외하고, 단품(묶음 개수 1)만 후보로 남긴다.
     prefix: "ssd" 또는 "hdd" — {prefix}_products/{prefix}_prices 테이블을 조회한다."""
+    # *** 신설(부품매칭 가이드 7/8절: M.2 PCIe버전/SATA 인터페이스 매칭) ***
+    # ssd_products에만 있는 컬럼(is_sata_interface/pcie_version)이라 hdd일 땐
+    # extra_cols를 비운다 — hdd_products엔 이 컬럼 자체가 없다.
+    extra_cols = ", p.is_sata_interface, p.pcie_version" if prefix == "ssd" else ""
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
         f"""
         SELECT p.product_id, p.name, pp.option_name, pp.price AS price_krw,
-               m.image_url, m.product_url
+               m.image_url, m.product_url{extra_cols}
         FROM {prefix}_products p
         JOIN {prefix}_prices pp ON pp.product_id = p.product_id
         LEFT JOIN product_media m ON m.category = '{media_category}' AND m.product_id = p.product_id
@@ -967,13 +1072,15 @@ def _fetch_storage_options(conn, prefix: str, media_category: str, gb_min: int) 
             "name": f"{row['name']} {row['option_name'].split('_')[0]}",
             "price_krw": row["price_krw"],
             "capacity_gb": capacity_gb,
+            "is_sata_interface": row.get("is_sata_interface"),
+            "pcie_version": row.get("pcie_version"),
             "image_url": row["image_url"],
             "product_url": row["product_url"],
         })
     return options
 
 
-def select_storage(ssd_gb_min: int = 500, hdd_gb_min: int = 0) -> dict:
+def select_storage(ssd_gb_min: int = 500, hdd_gb_min: int = 0, mboard: dict | None = None, psu: dict | None = None) -> dict:
     """저장장치 선택 (기획서 10장 확인 필요 항목: 순차 결정 순서에 저장장치 단계가
     명시적으로 없어서, 어느 시점에 처리할지 미정 — 이 프로토타입에서는 잠정적으로
     다른 부품과 호환성 제약이 없는 독립 항목으로 보고, 메인 순차 결정과 별개로
@@ -981,18 +1088,51 @@ def select_storage(ssd_gb_min: int = 500, hdd_gb_min: int = 0) -> dict:
 
     *** 수정(RAM과 동일한 발견 적용): ssd_products/hdd_products에 용량(GB)
     컬럼은 없지만, 다나와 option_name에 용량이 이미 있어서 컬럼 추가 없이도
-    실제 용량 요구사항을 검증할 수 있다. ***"""
+    실제 용량 요구사항을 검증할 수 있다.
+
+    *** 신설(부품매칭 가이드 7/8절) *** mboard/psu를 주면(검색이 끝나 최종
+    조합이 정해진 뒤에만 알 수 있으므로 선택 인자다) 다음을 검증한다:
+    - M.2 PCIe 버전: SSD가 NVMe면 mboard.m2_max_pcie_version보다 높은 세대는
+      제외한다(물리적으로 안 꽂히는 게 아니라 그 세대 속도로만 도는 정도라,
+      맞는 후보가 하나도 없으면 상한 없이 폴백한다 — RAM 속도 상한과 동일한
+      "권고이지 하드 제약은 아님" 원칙).
+    - SATA 커넥터 개수: 고른 SSD/HDD 중 SATA 인터페이스를 쓰는 개수가
+      mboard.sata3_count와 psu.sata_connector_count를 넘지 않는 후보만
+      남긴다(데이터가 없는 상품/보드/파워는 안전하게 통과시킨다 — 크롤링
+      누락으로 과도하게 배제되는 것을 방지).
+    """
     conn = get_connection()
     try:
         ssds = _fetch_storage_options(conn, "ssd", "ssd", ssd_gb_min)
-        ssds.sort(key=lambda r: r["price_krw"])
-        ssd = ssds[0] if ssds else None
+        hdds = _fetch_storage_options(conn, "hdd", "hdd", hdd_gb_min) if hdd_gb_min > 0 else []
 
+        m2_cap = mboard.get("m2_max_pcie_version") if mboard else None
+        if m2_cap:
+            capped = [
+                r for r in ssds
+                if r.get("is_sata_interface") or not r.get("pcie_version") or r["pcie_version"] <= m2_cap
+            ]
+            if capped:
+                ssds = capped
+
+        mboard_sata_ports = (mboard.get("sata3_count") if mboard else None) or 0
+        psu_sata_conn = (psu.get("sata_connector_count") if psu else None) or 0
+        # 데이터가 있는(0보다 큰) 쪽만 하한으로 삼는다 — 둘 다 정보가 없으면 제약을 안 건다.
+        sata_port_limit = min((v for v in (mboard_sata_ports, psu_sata_conn) if v), default=None)
+
+        def _sata_ok(ssd_row, hdd_row):
+            if sata_port_limit is None:
+                return True
+            used = (1 if hdd_row else 0) + (1 if ssd_row and ssd_row.get("is_sata_interface") else 0)
+            return used <= sata_port_limit
+
+        ssds.sort(key=lambda r: r["price_krw"])
+        hdds.sort(key=lambda r: r["price_krw"])
+
+        ssd = next((r for r in ssds if _sata_ok(r, None)), ssds[0] if ssds else None)
         hdd = None
         if hdd_gb_min > 0:
-            hdds = _fetch_storage_options(conn, "hdd", "hdd", hdd_gb_min)
-            hdds.sort(key=lambda r: r["price_krw"])
-            hdd = hdds[0] if hdds else None
+            hdd = next((r for r in hdds if _sata_ok(ssd, r)), hdds[0] if hdds else None)
 
         return {"ssd": ssd, "hdd": hdd}
     finally:
@@ -1054,7 +1194,7 @@ def build_performance(
     if max_build.status != "ok":
         return max_build
     if max_build.total_price <= parts_budget:
-        return _apply_final_review(_attach_storage(max_build, storage), req, opt, budget)
+        return _finalize_with_storage(max_build, req, opt, budget, ssd_gb_min, hdd_gb_min)
 
     # 다운그레이드 진행 상태: 각 스테이지별로 "현재 몇 단계 내렸는지" 인덱스를 추적
     conn = get_connection()
@@ -1087,7 +1227,19 @@ def build_performance(
             except StopIteration:
                 cur_pos = 0
 
+            # *** 수정(실사용자 발견: "CPU/GPU까지 최소 옵션으로 내렸는데도 예산을
+            # 맞추지 못했다"는 메시지가, 실제로는 어느 부품도 낮아지지 않은 채 뜬다) ***
+            # 예전엔 "이 스테이지 하나만 낮춰서 예산 안에 들어오는가"만 봐서, 한
+            # 스테이지의 가격차만으로는 예산을 못 맞추는 게 보통인 상황(거의 항상)에
+            # 그 스테이지를 최고 사양 그대로 두고 다음 스테이지로 넘어갔다 — 절감액이
+            # 스테이지 사이에 전혀 누적되지 않아, 뒤쪽 GPU/CPU 차례가 와도 다른 부품이
+            # 죄다 최고 사양이라 여전히 예산을 못 맞추고 실패했다(가성비 모드로는
+            # 분명히 예산 안에 드는 조합이 있는데도). 이제 이 스테이지에서 예산 안에
+            # 드는 후보가 하나도 없으면, 그 스테이지의 최저가 후보라도 채택해서
+            # 절감분이 다음 스테이지로 누적되게 한다 — 모든 스테이지를 다 훑어도
+            # 안 되면 그때 진짜로 "최소 옵션까지 내렸는데도 부족"이 맞다.
             review_retries = 0
+            cheapest_pos = None
             for next_pos in range(cur_pos + 1, len(candidates)):
                 trial = dict(current)
                 trial[stage] = candidates[next_pos]
@@ -1097,6 +1249,8 @@ def build_performance(
                 bottleneck = "gpu" in trial and check_bottleneck(trial["cpu"], trial["gpu"])
                 if bottleneck:
                     continue  # ③ 병목 발생 -> 이 후보는 건너뛰고 다음 후보 시도
+
+                cheapest_pos = next_pos  # 병목 없는 후보 중 가장 마지막(=가장 저렴)
 
                 if total <= parts_budget:
                     # *** 수정(실사용자 발견: "성능 모드에서 PSU 전력량 부족,
@@ -1127,17 +1281,25 @@ def build_performance(
                     break  # 이 스테이지에서는 예산 안에 들어왔으니 다음 스테이지로
                 # ① 계속 예산 부족 -> 이 스테이지에서 더 낮출 후보가 있으면 계속 시도
             else:
-                # ② 더 이상 대안 없음 -> 다음 순서의 부품 다운그레이드로 넘어감(그대로 유지)
-                pass
+                # ② 이 스테이지 혼자서는 예산을 못 맞췄다 — 병목 없는 후보 중
+                # 가장 저렴한 걸로라도 낮춰서 절감분을 다음 스테이지로 넘긴다.
+                if cheapest_pos is not None:
+                    current = dict(current)
+                    current[stage] = candidates[cheapest_pos]
+                    candidate_cache.pop("mboard", None)
+                    candidate_cache.pop("ram", None)
+                    candidate_cache.pop("cooler", None)
+                    candidate_cache.pop("psu", None)
+                    candidate_cache.pop("case", None)
 
             if stage in ("cpu", "gpu") and best_within_budget is None:
                 cpu_gpu_floor_reached = True
 
         if best_within_budget is not None:
             total, parts = best_within_budget
-            return _apply_final_review(
-                _attach_storage(BuildResult(parts=parts, total_price=total, status="ok", review_notes=review_notes), storage),
-                req, opt, budget,
+            return _finalize_with_storage(
+                BuildResult(parts=parts, total_price=total, status="ok", review_notes=review_notes),
+                req, opt, budget, ssd_gb_min, hdd_gb_min,
             )
 
         if cpu_gpu_floor_reached:
