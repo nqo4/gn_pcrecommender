@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { upgradeCpuGpu, upgradeRam, type BuildResponse, type Part } from "../api";
 import LoadingBar from "../components/LoadingBar";
+import { isMockMode, MOCK_BUILD_RESULT, MOCK_SELECTION } from "../mockData";
 
 const CATEGORY_LABELS: Record<string, string> = {
   cpu: "CPU", gpu: "GPU", mboard: "메인보드", ram: "RAM",
@@ -48,8 +49,11 @@ export default function Result() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as { result?: BuildResponse; selection?: Selection } | null;
-  const initial = state?.result;
-  const selection = state?.selection;
+  // 홈을 거치지 않고 /result?mock=1 로 바로 들어온 경우(예: 이 화면만 디자인 미리보기)에도
+  // 목 데이터로 채운다. state가 이미 있으면(홈에서 넘어온 경우) 그걸 우선한다.
+  const mockActive = isMockMode();
+  const initial = state?.result ?? (mockActive ? MOCK_BUILD_RESULT : undefined);
+  const selection = state?.selection ?? (mockActive ? MOCK_SELECTION : undefined);
 
   const [result, setResult] = useState<BuildResponse | undefined>(initial);
   const [history, setHistory] = useState<BuildResponse[]>([]);
@@ -67,6 +71,11 @@ export default function Result() {
   }
 
   const runAction = async (fn: () => Promise<BuildResponse>, failMessage: string) => {
+    if (mockActive) {
+      // 목업 모드에서는 백엔드가 없으므로 업그레이드 API를 호출하지 않고 안내만 표시한다.
+      setActionError("목업 모드(?mock=1)에서는 업그레이드 기능을 사용할 수 없습니다. 실제 API 서버 연결 후 확인해주세요.");
+      return;
+    }
     setActionLoading(true);
     setActionError("");
     try {
@@ -92,7 +101,7 @@ export default function Result() {
   };
 
   const handleConfirm = () => {
-    navigate("/confirm", { state: { result, selection } });
+    navigate(mockActive ? "/confirm?mock=1" : "/confirm", { state: { result, selection } });
   };
 
   if (result.status !== "ok") {
