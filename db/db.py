@@ -9,7 +9,7 @@ MySQL로 전환했다. db/schema.sql이 그 저장소의 danawa_only_load.sql(�
 
 환경변수(크롤러 연동 때 쓰던 것과 동일한 이름 재사용):
   DANAWA_DB_HOST, DANAWA_DB_PORT, DANAWA_DB_USER, DANAWA_DB_PASSWORD
-  DANAWA_DB_NAME 기본값은 "DW_db"(저장소 스키마의 실제 DB명).
+  DANAWA_DB_NAME 기본값은 "dw_db"(저장소 스키마의 실제 DB명).
 """
 import os
 
@@ -23,7 +23,7 @@ def _db_config() -> dict:
         "port": int(os.environ.get("DANAWA_DB_PORT", "3306")),
         "user": os.environ.get("DANAWA_DB_USER", "root"),
         "password": os.environ.get("DANAWA_DB_PASSWORD", ""),
-        "database": os.environ.get("DANAWA_DB_NAME", "DW_db"),
+        "database": os.environ.get("DANAWA_DB_NAME", "dw_db"),
         "charset": "utf8mb4",
     }
 
@@ -72,7 +72,7 @@ def _split_statements(sql_text: str) -> list[str]:
 
 def init_db() -> None:
     """schema.sql + seed_data.sql을 실행해 DB를 새로 만든다.
-    스키마 자체가 USE DW_db로 시작하므로, 최초 연결은 database 지정 없이 연다.
+    스키마 자체가 USE dw_db로 시작하므로, 최초 연결은 database 지정 없이 연다.
 
     *** 수정: mysql-connector-python 최신 버전(26.x)에서 cursor.execute(sql,
     multi=True)가 더 이상 지원되지 않아서(TypeError), 문(statement) 단위로

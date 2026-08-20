@@ -1,5 +1,5 @@
 """
-MySQL 연결 확인 + DW_db 데이터베이스 생성 스크립트.
+MySQL 연결 확인 + dw_db 데이터베이스 생성 스크립트.
 
 사용법:
     python check_and_setup_db.py
@@ -45,15 +45,15 @@ cursor.execute("SHOW DATABASES")
 databases = [row[0] for row in cursor.fetchall()]
 print(f"\n현재 존재하는 데이터베이스: {databases}")
 
-if "DW_db" in databases or "dw_db" in [d.lower() for d in databases]:
-    print("\n'DW_db'가 이미 있습니다.")
-    cursor.execute("SHOW TABLES FROM DW_db")
+if "dw_db" in databases or "dw_db" in [d.lower() for d in databases]:
+    print("\n'dw_db'가 이미 있습니다.")
+    cursor.execute("SHOW TABLES FROM dw_db")
     tables = [row[0] for row in cursor.fetchall()]
     print(f"안에 있는 테이블({len(tables)}개): {tables}")
 else:
-    print("\n'DW_db'가 없어서 새로 만듭니다...")
-    cursor.execute("CREATE DATABASE DW_db DEFAULT CHARACTER SET utf8mb4")
-    print("✅ 'DW_db' 데이터베이스 생성 완료 (아직 테이블은 없는 빈 상태)")
+    print("\n'dw_db'가 없어서 새로 만듭니다...")
+    cursor.execute("CREATE DATABASE dw_db DEFAULT CHARACTER SET utf8mb4")
+    print("✅ 'dw_db' 데이터베이스 생성 완료 (아직 테이블은 없는 빈 상태)")
 
 # local_infile 설정 확인 (danawa_only_load.sql 실행에 필요)
 cursor.execute("SHOW VARIABLES LIKE 'local_infile'")

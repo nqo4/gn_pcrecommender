@@ -8,7 +8,7 @@
 -- IF NOT EXISTS를 써서 이미 있으면 건드리지 않고, cpu_products/vga_products/
 -- game_requirements 등 실제 데이터가 든 테이블은 아예 손대지 않습니다.
 -- ============================================================
-USE DW_db;
+USE dw_db;
 
 CREATE TABLE IF NOT EXISTS usage_profiles (
     id                  INT PRIMARY KEY,

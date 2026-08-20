@@ -28,7 +28,7 @@ def _db_config(include_database: bool = True) -> dict:
         "allow_local_infile": True,
     }
     if include_database:
-        cfg["database"] = os.environ.get("DANAWA_DB_NAME", "DW_db")
+        cfg["database"] = os.environ.get("DANAWA_DB_NAME", "dw_db")
     return cfg
 
 

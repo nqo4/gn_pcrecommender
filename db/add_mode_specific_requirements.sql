@@ -24,7 +24,7 @@
 --   가성비 CPU 하한: i5-14400 -> tier 3
 --   성능 CPU 하한: i9-14900K -> tier 24
 -- ============================================================
-USE DW_db;
+USE dw_db;
 
 ALTER TABLE usage_profiles ADD COLUMN required_gpu_tier_perf SMALLINT UNSIGNED NULL;
 ALTER TABLE usage_profiles ADD COLUMN required_cpu_tier_perf SMALLINT UNSIGNED NULL;

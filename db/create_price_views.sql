@@ -3,7 +3,7 @@
 -- (id, product_id, crawl_date, option_name, price) 구조에 맞춰 생성.
 -- danawa_only_load.sql 등 실제 데이터 적재가 끝난 뒤 한 번 실행하면 된다.
 -- ============================================================
-USE DW_db;
+USE dw_db;
 
 DROP VIEW IF EXISTS cpu_products_v;
 CREATE VIEW cpu_products_v AS
