@@ -41,20 +41,20 @@ SQL 스키마를 기반으로 만든 1단계 프로토타입입니다. **기존 
 pip install -r requirements.txt
 ```
 
-환경변수(비워두면 기본값 `localhost:3306`, `root`, 빈 비밀번호, DB명 `DW_db`):
+환경변수(비워두면 기본값 `localhost:3306`, `root`, 빈 비밀번호, DB명 `dw_db`):
 ```bash
 export DANAWA_DB_HOST=localhost
 export DANAWA_DB_PORT=3306
 export DANAWA_DB_USER=root
 export DANAWA_DB_PASSWORD=원하는비밀번호
-export DANAWA_DB_NAME=DW_db
+export DANAWA_DB_NAME=dw_db
 ```
 
 ## 실행 방법
 
 **백엔드(터미널 1):**
 ```bash
-python3 db/db.py       # 최초 1회 또는 스키마/데이터 변경 후 — DW_db 새로 생성
+python3 db/db.py       # 최초 1회 또는 스키마/데이터 변경 후 — dw_db 새로 생성
 python3 api/server.py   # http://127.0.0.1:5000
 ```
 

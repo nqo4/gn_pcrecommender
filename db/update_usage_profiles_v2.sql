@@ -17,7 +17,7 @@
 --             — AI/딥러닝 세부용도(VRAM16GB+, GPU tier 9+)는 지금 시스템에
 --             "개발" 프로필 하나뿐이라 구분이 안 된다(알려드려야 할 한계).
 -- ============================================================
-USE DW_db;
+USE dw_db;
 
 ALTER TABLE usage_profiles ADD COLUMN required_ssd_gb SMALLINT UNSIGNED NULL;
 ALTER TABLE usage_profiles ADD COLUMN required_hdd_gb SMALLINT UNSIGNED NULL DEFAULT 0;

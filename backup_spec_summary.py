@@ -13,7 +13,7 @@ DB_CONFIG = {
     "port": int(os.environ.get("DANAWA_DB_PORT", "3306")),
     "user": os.environ.get("DANAWA_DB_USER", "root"),
     "password": os.environ.get("DANAWA_DB_PASSWORD", ""),
-    "database": os.environ.get("DANAWA_DB_NAME", "DW_db"),
+    "database": os.environ.get("DANAWA_DB_NAME", "dw_db"),
     "charset": "utf8mb4",
 }
 
