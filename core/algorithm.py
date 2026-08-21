@@ -246,6 +246,9 @@ def _parse_ram_option(option_name: str) -> tuple[int, int] | None:
 
 
 _RAM_SPEED_RE = re.compile(r"DDR[45]-(\d+)")
+# 상품명 끝에 보통 "(8GB)", "(16GB)"처럼 실제 판매 단위(단일 스틱) 용량이
+# 명시되어 있다. 이 용량이 곧 "이 pcode가 실제로 파는 진짜 용량"이다.
+_RAM_NAME_CAPACITY_RE = re.compile(r"\((\d+)\s*GB\)")
 # *** 수정(실사용자 최종 결정): 가성비/성능 모드별 목표 클럭을 분리한다.
 # 가성비 = CPU 공식 지원 클럭과 비슷하게(5600MHz), 성능 = 6000~6400MHz
 # (CPU 공식 클럭보다 높은 XMP/EXPO 오버클럭 여유분).
@@ -309,11 +312,40 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
             stick_capacity_gb, stick_count = parsed
             if stick_count != 1:
                 continue  # 이미 묶인 킷 옵션은 제외 — 단일 스틱만 후보로 삼는다
+
+            # *** 버그 수정(실사용자 발견): 크롤링 원본이 "다른 구성"(다나와가
+            # 별도 pcode/페이지로 파는 다른 용량 상품들)의 가격까지 같은
+            # product_id 밑에 option_name으로 같이 저장해버린 경우가 있다.
+            # 예) pcode=37345886(8GB 상품)의 option_name에 "8GB", "16GB",
+            #     "32GB"가 전부 들어있는데, 16GB/32GB는 사실 다른 pcode의
+            #     별개 상품이라 우리 링크(product_media, product_id 단위)는
+            #     그 상품을 가리키지 않는다. 이 상태로 "16GB 단일 스틱"이라고
+            #     오인해서 quantity를 곱하면 총 용량도 틀리고 링크도 엉뚱한
+            #     8GB 페이지를 가리키게 된다.
+            # -> 상품명(name)에 명시된 실제 용량과 옵션 용량이 일치할 때만
+            #    "이 상품 자신의 진짜 단일 스틱 용량"으로 인정한다.
+            name_cap_m = _RAM_NAME_CAPACITY_RE.search(row["name"] or "")
+            if name_cap_m:
+                name_capacity_gb = int(name_cap_m.group(1))
+                if stick_capacity_gb != name_capacity_gb:
+                    continue  # 이 product_id에 잘못 섞여 들어간 "다른 상품" 옵션 -> 제외
+
             total_capacity_gb = stick_capacity_gb * quantity
             if total_capacity_gb < ram_gb_min:
                 continue
             unit_price = row["price_krw"]
             option_label = row["option_name"].split("_")[0]
+            # *** 신설: 링크가 상품 페이지 단위(product_id)로만 저장되어 있어서
+            # 여러 옵션(8GB 단품 / 16GB(8Gx2) 킷 등)이 같은 링크를 공유한다.
+            # 페이지 접속 시 다른 옵션이 기본 선택돼 있을 수 있으므로, 몇 개를
+            # 몇 개씩 사야 하는지 안내 문구를 같이 내려줘서 프론트엔드가
+            # 옵션 선택을 유도할 수 있게 한다.
+            option_note = (
+                f"다나와 페이지 접속 후 [{option_label}] 옵션을 선택하고 "
+                f"{quantity}개 구매해주세요."
+                if quantity > 1 else
+                f"다나와 페이지 접속 후 [{option_label}] 옵션을 선택해주세요."
+            )
             options.append({
                 "product_id": row["product_id"],
                 "name": f"{row['name']} {option_label}" + (f" x{quantity}" if quantity > 1 else ""),
@@ -326,6 +358,8 @@ def _fetch_ram_options(conn, ram_type: str, mboard_slot_count: int | None, ram_g
                 "heatsink_height_mm": row.get("heatsink_height_mm"),
                 "image_url": row["image_url"],
                 "product_url": row["product_url"],
+                "selected_option": option_label,
+                "option_note": option_note,
             })
         return options
 
