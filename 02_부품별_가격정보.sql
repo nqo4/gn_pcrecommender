@@ -1,17 +1,17 @@
 -- ============================================================
--- 02. 부품별 가격정보 적재 (CSV -> MySQL(DW_db))
--- 전제조건: 01_부품_제외처리.sql 을 먼저 실행해서 DW_db 스키마가 생성되어 있어야 함
+-- 02. 부품별 가격정보 적재 (CSV -> MySQL(dw_db))
+-- 전제조건: 01_부품_제외처리.sql 을 먼저 실행해서 dw_db 스키마가 생성되어 있어야 함
 -- 브랜드 스코프: CPU=인텔만 / GPU=NVIDIA만 / MBoard=MSI,ASUS,GIGABYTE /
 --              Cooler=PCCOOLER,DEEPCOOL / RAM=삼성전자,TeamGroup / SSD=삼성전자 /
 --              HDD=Western Digital,Seagate / Power=마이크로닉스,darkFlash / Case=darkFlash,앱코
 -- 실행 순서: 01 다음, spec_scraper.py --all 실행 전/후 아무 때나 (스펙 값 채우기는 04에서)
 -- ============================================================
-USE DW_db;
+USE dw_db;
 SET SQL_SAFE_UPDATES = 0;
 SET SESSION group_concat_max_len = 1000000;
 
 -- ============================================================
--- 다나와(danawa) 단일 소스 적재 스크립트 -- 스키마: DW_db
+-- 다나와(danawa) 단일 소스 적재 스크립트 -- 스키마: dw_db
 -- - buildcores/opendb 의존성 없음 (danawa_crawler 크롤링 데이터만 사용)
 -- - 제외 대상: 중고, 노트북, 가격비교불가(가격비교예정 등), 단종(유효 최신일자 가격 없음) -- 벌크는 포함(적재)
 -- - RAM: 묶음(스틱) 개수를 파싱해서 저장, 4개 초과 옵션은 제외
@@ -28,10 +28,10 @@ SET SESSION group_concat_max_len = 1000000;
 --   3) 이 스크립트 상단 LOAD_PATH_PREFIX 가 실제 CSV 위치와 일치하는지 확인
 --      (generate_sql.py 의 LOAD_PATH_PREFIX 값을 바꾼 뒤 다시 생성하면 됩니다)
 --
--- 이 스크립트는 DW_db 스키마를 매번 새로 지우고(DROP) 다시 만듭니다.
+-- 이 스크립트는 dw_db 스키마를 매번 새로 지우고(DROP) 다시 만듭니다.
 -- ============================================================
 
-USE DW_db;
+USE dw_db;
 SET SQL_SAFE_UPDATES = 0;
 SET SESSION group_concat_max_len = 1000000;
 
@@ -53,7 +53,7 @@ CREATE TABLE stg_cpu (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT, d7 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/CPU.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/CPU.csv'
 INTO TABLE stg_cpu
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -241,7 +241,7 @@ CREATE TABLE stg_vga (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/VGA.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/VGA.csv'
 INTO TABLE stg_vga
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -442,7 +442,7 @@ CREATE TABLE stg_ram (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/RAM.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/RAM.csv'
 INTO TABLE stg_ram
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -661,7 +661,7 @@ CREATE TABLE stg_ssd (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/SSD.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/SSD.csv'
 INTO TABLE stg_ssd
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -838,7 +838,7 @@ CREATE TABLE stg_hdd (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/HDD.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/HDD.csv'
 INTO TABLE stg_hdd
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -1023,7 +1023,7 @@ CREATE TABLE stg_mboard (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/MBoard.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/MBoard.csv'
 INTO TABLE stg_mboard
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -1213,13 +1213,13 @@ CREATE TABLE stg_cooler (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/Cooler.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/Cooler.csv'
 INTO TABLE stg_cooler
-CHARACTER SET utf8mb4
+CHARACTER SET euckr
 FIELDS TERMINATED BY ','
 OPTIONALLY ENCLOSED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+LINES TERMINATED BY '\r\n'
+IGNORE 2 ROWS;
 
 SELECT 'Cooler raw rows' AS info, COUNT(*) AS cnt FROM stg_cooler;
 
@@ -1346,6 +1346,26 @@ WHERE name NOT LIKE '%중고%'
   AND name NOT LIKE '%해외구매%'
   AND name NOT LIKE '%병행수입%'
   AND name NOT LIKE '%탈거%'
+  -- *** 신설(실사용자 발견): 브랜드명만 걸러내다 보니 실제 공랭/수랭 쿨러가
+  -- 아닌 액세서리(써멀 도포 지그, 써멀 그리스, 브라켓, 케이블 등)까지
+  -- 그대로 통과되고 있었다. 상품명에 이런 키워드가 있으면 제외한다.
+  AND name NOT LIKE '%Thermal Paste Guard%'
+  AND name NOT LIKE '%써멀 가이드%'
+  AND name NOT LIKE '%도포 가이드%'
+  AND name NOT LIKE '%써멀구리스%'
+  AND name NOT LIKE '%써멀 구리스%'
+  AND name NOT LIKE '%써멀그리스%'
+  AND name NOT LIKE '%써멀 그리스%'
+  AND name NOT LIKE '%그리스%'
+  AND name NOT LIKE '%브라켓%'
+  AND name NOT LIKE '%마운트%'
+  AND name NOT LIKE '%가이드%'
+  AND name NOT LIKE '%지그%'
+  AND name NOT LIKE '%케이블%'
+  AND name NOT LIKE '%아답터%'
+  AND name NOT LIKE '%어댑터%'
+  AND name NOT LIKE '%컨트롤러%'
+  AND name NOT LIKE '%허브%'
   AND (s.name LIKE '%PCCOOLER%' OR s.name LIKE '%피씨쿨러%' OR s.name LIKE '%DEEPCOOL%' OR s.name LIKE '%딥쿨%')
   AND EXISTS (
         SELECT 1 FROM cooler_prices_all pp
@@ -1392,7 +1412,7 @@ CREATE TABLE stg_power (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/Power.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/Power.csv'
 INTO TABLE stg_power
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
@@ -1576,7 +1596,7 @@ CREATE TABLE stg_case (
     d1 TEXT, d2 TEXT, d3 TEXT, d4 TEXT, d5 TEXT, d6 TEXT
 );
 
-LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Project_File/Danawa-Crawler-master/crawl_data/Case.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/GN/Desktop/Danawa-Crawler-master-fix/Danawa-Crawler-master/crawl_data/Case.csv'
 INTO TABLE stg_case
 CHARACTER SET utf8mb4
 FIELDS TERMINATED BY ','
